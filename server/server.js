@@ -1,6 +1,6 @@
 require('dotenv').config()
-const { loadEnv } = require('./server/src/config/env')
-const { connectDB } = require('./server/src/config/db')
+const { loadEnv } = require('./src/config/env')
+const { connectDB } = require('./src/config/db')
 const { createApp } = require('./app')
 const mongoose = require('mongoose')
 
