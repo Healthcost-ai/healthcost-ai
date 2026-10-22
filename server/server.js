@@ -4,16 +4,24 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const mongoose = require('mongoose')
-const billRoutes = require('./routes/bills')
+
+const connectDB = require('./config/db')
+const billRoutes = require('./routes/billRoutes')
 
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = Number(process.env.PORT) || 5000
 
-app.use(cors())
+app.disable('x-powered-by')
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  })
+)
+
 app.use(express.json({ limit: '1mb' }))
-app.use('/api/bills', billRoutes)
 
-// Basic API route
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -25,7 +33,10 @@ app.get('/api/health', (req, res) => {
   })
 })
 
-// Friendly response for unknown API routes
+// Bill API
+app.use('/api/bills', billRoutes)
+
+// Unknown API endpoints
 app.use('/api', (req, res) => {
   res.status(404).json({
     success: false,
@@ -33,23 +44,46 @@ app.use('/api', (req, res) => {
   })
 })
 
-// Start the server even if MongoDB is not configured yet.
-app.listen(PORT, () => {
-  console.log(`HealthCost AI server running on port ${PORT}`)
+// General error handler
+app.use((err, req, res, next) => {
+  console.error(err.message)
+
+  if (res.headersSent) {
+    return next(err)
+  }
+
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Database validation failed',
+    })
+  }
+
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid data format',
+    })
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: 'An unexpected server error occurred',
+  })
 })
 
-// Connect to MongoDB when a connection string is available.
-if (process.env.MONGODB_URI) {
-  mongoose
-    .connect(process.env.MONGODB_URI)
-    .then(() => {
-      console.log('MongoDB connected successfully')
+async function startServer() {
+  try {
+    await connectDB()
+
+    app.listen(PORT, () => {
+      console.log(`HealthCost AI server running on port ${PORT}`)
+      console.log(`Health check: http://localhost:${PORT}/api/health`)
     })
-    .catch((error) => {
-      console.error('MongoDB connection failed:', error.message)
-    })
-} else {
-  console.log(
-    'MongoDB URI not configured yet. API is running without a database.'
-  )
+  } catch (error) {
+    console.error('Failed to start backend:', error.message)
+    process.exitCode = 1
+  }
 }
+
+startServer()
