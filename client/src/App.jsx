@@ -1,6 +1,8 @@
 
 import { useRef, useState } from 'react'
 import './App.css'
+import BillAnalyzer from './pages/BillAnalyzer.jsx';
+import AnalysisPreview from './components/AnalysisPreview.jsx'
 
 const sampleReports = [
   {
@@ -41,6 +43,8 @@ function formatCurrency(amount) {
 }
 
 function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [showDemoResults, setShowDemoResults] = useState(false)
   const fileInputRef = useRef(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [notice, setNotice] = useState('')
@@ -69,24 +73,30 @@ function App() {
       setNotice('Your file must be smaller than 10 MB.')
       return
     }
+    setShowDemoResults(false)
 
     setSelectedFile(file)
     setNotice('File selected. Analysis will be available in a future step.')
   }
 
-  function handleSubmit(event) {
-    event.preventDefault()
+ function handleSubmit(event) {
+  event.preventDefault()
 
-    if (!selectedFile) {
-      setNotice('Choose a medical bill before continuing.')
-      return
-    }
-
-    setNotice(
-      'Your file is ready. Uploading and AI analysis are not connected yet.'
-    )
+  if (!selectedFile) {
+    setNotice('Choose a medical bill before continuing.')
+    return
   }
 
+  setNotice('')
+  setShowDemoResults(true)
+
+  window.setTimeout(() => {
+    document.getElementById('analysis-results')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, 100)
+}
   function handleNavigation(event, label) {
     event.preventDefault()
     setActiveNav(label)
@@ -110,7 +120,13 @@ function App() {
       })
     }
   }
-
+if (currentPage === 'analyzer') {
+  return (
+    <BillAnalyzer
+      onBack={() => setCurrentPage('dashboard')}
+    />
+  );
+}
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -433,6 +449,25 @@ function App() {
               </div>
             </article>
           </section>
+          {showDemoResults && selectedFile && (
+  <AnalysisPreview
+    fileName={selectedFile.name}
+    onChooseAnother={() => {
+      setShowDemoResults(false)
+      setSelectedFile(null)
+      setNotice('')
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
+      document.getElementById('upload')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }}
+  />
+)}
 
           <section className="reports-section" id="reports">
             <div className="reports-heading">

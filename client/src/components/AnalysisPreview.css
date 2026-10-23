@@ -1,0 +1,166 @@
+
+.analysis-preview {
+  margin-top: 28px;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e4ece8;
+  border-radius: 18px;
+  color: #18352b;
+}
+
+.analysis-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.analysis-kicker {
+  color: #16835d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+
+.analysis-preview-header h2 {
+  margin: 8px 0;
+  font-size: 25px;
+}
+
+.analysis-file-name {
+  margin: 0;
+  color: #718078;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.analysis-demo-badge {
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: #fff3d7;
+  color: #875b08;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.analysis-demo-notice {
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #f0dca8;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.analysis-demo-notice strong {
+  color: #77520b;
+}
+
+.analysis-demo-notice p {
+  margin: 7px 0 0;
+  color: #705f3d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.analysis-total-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 22px;
+  margin-bottom: 26px;
+  border-radius: 14px;
+  background: #edf8f2;
+}
+
+.analysis-total-card span {
+  color: #426c58;
+  font-size: 13px;
+}
+
+.analysis-total-card strong {
+  color: #08764e;
+  font-size: 30px;
+}
+
+.analysis-total-card small {
+  color: #567565;
+  font-size: 12px;
+}
+
+.analysis-table-wrap h3,
+.analysis-next-step h3 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+
+.analysis-table-wrap {
+  overflow-x: auto;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid #e9efeb;
+  font-size: 13px;
+}
+
+.analysis-table thead th {
+  color: #718078;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.analysis-table th:last-child,
+.analysis-table td:last-child {
+  text-align: right;
+}
+
+.analysis-table tfoot th {
+  color: #18352b;
+  font-weight: 800;
+}
+
+.analysis-next-step {
+  margin-top: 25px;
+  padding-top: 22px;
+  border-top: 1px solid #e9efeb;
+}
+
+.analysis-next-step p {
+  color: #718078;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.analysis-next-step button {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: #087b55;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.analysis-next-step button:hover {
+  background: #066443;
+}
+
+@media (max-width: 600px) {
+  .analysis-preview {
+    padding: 18px;
+  }
+
+  .analysis-total-card strong {
+    font-size: 25px;
+  }
+}
