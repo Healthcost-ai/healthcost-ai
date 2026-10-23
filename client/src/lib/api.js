@@ -142,9 +142,9 @@ export async function deleteBill(id) {
   })
 }
 
-export async function explainBill(id) {
+export async function explainBill(id, consentToExternalProcessing = false) {
   return secureRequest(`/bills/${encodeURIComponent(id)}/explanation`, {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify({ consentToExternalProcessing }),
   })
 }

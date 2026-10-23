@@ -653,6 +653,251 @@
   margin-top: 18px;
 }
 
+.bill-entry-form {
+  max-width: 900px;
+}
+
+.bill-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 14px;
+  margin: 23px 0;
+}
+
+.bill-fields label,
+.bill-item-row label,
+.bill-totals label {
+  display: grid;
+  gap: 6px;
+  color: #63796f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bill-fields input,
+.bill-fields select,
+.bill-item-row input,
+.bill-totals input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid #dce8e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #26463b;
+  font: inherit;
+  font-size: 12px;
+}
+
+.bill-fields input:focus,
+.bill-fields select:focus,
+.bill-item-row input:focus,
+.bill-totals input:focus {
+  border-color: #55aa80;
+  outline: 3px solid rgb(85 170 128 / 15%);
+}
+
+.bill-items-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9f0eb;
+}
+
+.bill-items-heading h3 {
+  margin: 0;
+  color: #294a3d;
+  font-size: 13px;
+}
+
+.bill-items-heading span {
+  color: #8a9a92;
+  font-size: 10px;
+}
+
+.bill-items {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+}
+
+.bill-item-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 2fr) minmax(70px, 0.6fr) minmax(100px, 1fr) minmax(110px, 1fr) 28px;
+  align-items: end;
+  gap: 9px;
+}
+
+.remove-line-button {
+  width: 28px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: #809188;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.remove-line-button:disabled {
+  color: #c4cec8;
+  cursor: not-allowed;
+}
+
+.add-line-button {
+  margin-top: 12px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: #087f5b;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.bill-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.7fr) minmax(160px, 0.8fr);
+  align-items: end;
+  gap: 13px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e9f0eb;
+}
+
+.calculated-total {
+  display: grid;
+  gap: 7px;
+  min-height: 58px;
+  align-content: center;
+  color: #75877e;
+  font-size: 10px;
+}
+
+.calculated-total strong {
+  color: #1c4939;
+  font-size: 18px;
+}
+
+.bill-ok-badge {
+  background: #eaf7ef;
+  color: #18734e;
+}
+
+.difference-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding-left: 20px;
+  color: #8e641b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.no-difference-message {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f1faf4;
+  color: #347353;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 18px 0 12px;
+  color: #667b71;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.consent-check input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: #087f5b;
+}
+
+.explain-button {
+  margin-bottom: 12px;
+}
+
+.explanation-box {
+  margin: 15px 0;
+  padding: 16px;
+  border: 1px solid #dcefe3;
+  border-radius: 10px;
+  background: #f7fbf8;
+  color: #516a5e;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.explanation-box h3 {
+  margin: 0 0 8px;
+  color: #264a3a;
+  font-size: 13px;
+}
+
+.explanation-box p {
+  margin: 0;
+}
+
+.results-disclaimer {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #f0e4c8;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #816a3c;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+@media (max-width: 700px) {
+  .bill-item-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(85px, 1fr) minmax(110px, 1.2fr) 28px;
+    gap: 9px;
+    padding: 12px 0;
+    border-bottom: 1px solid #edf2ee;
+  }
+
+  .bill-description {
+    grid-column: 1 / -1;
+  }
+
+  .bill-totals {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .calculated-total {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .bill-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .bill-item-row {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.1fr) 28px;
+  }
+
+  .bill-totals {
+    grid-template-columns: 1fr;
+  }
+
+  .calculated-total {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 650px) {
   .analyzer-topbar {
     grid-template-columns: 1fr auto;

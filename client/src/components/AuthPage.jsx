@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { login, register, resendVerification, verifyEmail } from '../lib/api'
 
-export default function AuthPage({ onAuthenticated }) {
+export default function AuthPage({ onAuthenticated, onDemo }) {
   const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).has('token') ? 'verify' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -260,6 +260,14 @@ export default function AuthPage({ onAuthenticated }) {
             </>
           )}
         </div>
+
+        {mode === 'login' && (
+          <div className="demo-entry">
+            <span>Just exploring?</span>
+            <button type="button" onClick={onDemo}>Try the interactive demo</button>
+            <small>Uses local browser storage. No account or bill upload required.</small>
+          </div>
+        )}
 
         <p className="auth-privacy">
           Your medical cost workspace. Built with privacy in mind.

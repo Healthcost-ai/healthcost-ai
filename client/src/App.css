@@ -126,6 +126,14 @@ a:focus-visible {
     background 160ms ease;
 }
 
+.nav-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
 .nav-link:hover {
   color: var(--green-dark);
   background: #f3f8f5;
@@ -914,6 +922,19 @@ a:focus-visible {
   text-overflow: ellipsis;
 }
 
+.report-delete {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #89988f;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.report-delete:hover {
+  color: #b42318;
+}
+
 .report-category,
 .report-date {
   color: #7b8980;
@@ -935,6 +956,104 @@ a:focus-visible {
   color: #718078;
   font-size: 9px;
   font-weight: 700;
+}
+
+.bill-status-ok,
+.bill-status-review {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.bill-status-ok {
+  background: #eaf7ef;
+  color: #18734e;
+}
+
+.bill-status-review {
+  background: #fff4df;
+  color: #8e641b;
+}
+
+.reports-empty {
+  padding: 28px 18px;
+  color: #78877e;
+  font-size: 12px;
+  text-align: center;
+}
+
+.dashboard-error {
+  margin: 0 0 18px;
+  padding: 12px 15px;
+  border: 1px solid #f0ceca;
+  border-radius: 9px;
+  background: #fff5f4;
+  color: #a33c32;
+  font-size: 12px;
+}
+
+.demo-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 12px 15px;
+  border: 1px solid #dcefe3;
+  border-radius: 10px;
+  background: #f1faf4;
+  color: #557264;
+  font-size: 11px;
+}
+
+.demo-callout strong {
+  color: #18734e;
+  white-space: nowrap;
+}
+
+.feature-list {
+  display: grid;
+  gap: 15px;
+  margin: 5px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-list li {
+  display: grid;
+  gap: 4px;
+}
+
+.feature-list strong {
+  color: #34473c;
+  font-size: 11px;
+}
+
+.feature-list span,
+.medical-disclaimer {
+  color: #829087;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.medical-disclaimer {
+  margin: auto 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #edf2ee;
+}
+
+.analyzer-start {
+  margin-top: 14px;
+}
+
+.profile-email {
+  max-width: 250px;
+  overflow: hidden;
+  color: #52665a;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sample-disclaimer {
@@ -1123,7 +1242,7 @@ a:focus-visible {
 
   .report-table-header,
   .report-row {
-    grid-template-columns: minmax(145px, 1.5fr) minmax(80px, 1fr) minmax(90px, 1fr) 85px;
+    grid-template-columns: minmax(145px, 1.5fr) minmax(90px, 1fr) 85px 76px;
   }
 
   .report-table-header > :nth-child(2),
@@ -1340,7 +1459,7 @@ a:focus-visible {
   .report-table-header,
   .report-row {
     min-width: 475px;
-    grid-template-columns: minmax(145px, 1.5fr) minmax(80px, 1fr) minmax(90px, 1fr) 85px;
+    grid-template-columns: minmax(145px, 1.5fr) minmax(90px, 1fr) 85px 76px;
   }
 
   .report-table-header > :nth-child(2),
@@ -1564,6 +1683,35 @@ a:focus-visible {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.demo-entry {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 14px;
+  border: 1px solid #dcefe3;
+  border-radius: 10px;
+  background: #f5fbf7;
+  color: #718078;
+  text-align: center;
+  font-size: 12px;
+}
+
+.demo-entry button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #16845a;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.demo-entry small {
+  color: #89968f;
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .auth-privacy {

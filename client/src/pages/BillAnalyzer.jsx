@@ -1,402 +1,293 @@
+import { useMemo, useState } from 'react'
+import './BillAnalyzer.css'
 
-import { useRef, useState } from 'react';
-import './BillAnalyzer.css';
+const blankItem = () => ({ description: '', quantity: '1', unitPrice: '', lineTotal: '' })
 
-const sampleAnalysis = {
-  hospital: 'Sample City Hospital',
-  billNumber: 'DEMO-2026-001',
-  billDate: '20 October 2026',
-  total: 4850,
-  items: [
-    {
-      name: 'Doctor consultation',
-      quantity: 1,
-      unitPrice: 800,
-      amount: 800,
-      note: 'Consultation charge',
-    },
-    {
-      name: 'Blood test',
-      quantity: 1,
-      unitPrice: 650,
-      amount: 650,
-      note: 'Laboratory investigation',
-    },
-    {
-      name: 'Medication',
-      quantity: 1,
-      unitPrice: 1200,
-      amount: 1200,
-      note: 'Medicine charges',
-    },
-    {
-      name: 'Room charges',
-      quantity: 1,
-      unitPrice: 2200,
-      amount: 2200,
-      note: 'Room and facility charges',
-    },
-  ],
-  questions: [
-    'Can you provide an itemized breakdown of the room charges?',
-    'Are the laboratory charges covered by my insurance?',
-    'Can you provide an itemized receipt for the medication charges?',
-  ],
-};
+const currencyOptions = ['INR', 'USD', 'GBP', 'EUR']
 
-function formatCurrency(amount) {
+function formatCurrency(amount, currency) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'INR',
+    currency,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(Number(amount) || 0)
 }
 
-export default function BillAnalyzer({ onBack }) {
-  const inputRef = useRef(null);
-  const [file, setFile] = useState(null);
-  const [dragging, setDragging] = useState(false);
-  const [error, setError] = useState('');
-  const [analyzing, setAnalyzing] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
+function makeDemoBill() {
+  return {
+    patientLabel: 'City Hospital visit',
+    currency: 'INR',
+    items: [
+      { description: 'Consultation fee', quantity: '1', unitPrice: '800', lineTotal: '800' },
+      { description: 'Complete blood count', quantity: '1', unitPrice: '450', lineTotal: '650' },
+      { description: 'Room charges', quantity: '1', unitPrice: '2200', lineTotal: '2200' },
+    ],
+    tax: '0',
+    total: '3650',
+  }
+}
 
-  function validateFile(selectedFile) {
-    setError('');
-    setShowResults(false);
-    setDemoMode(false);
+export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = false }) {
+  const [patientLabel, setPatientLabel] = useState('')
+  const [currency, setCurrency] = useState('INR')
+  const [items, setItems] = useState([blankItem()])
+  const [tax, setTax] = useState('0')
+  const [billTotal, setBillTotal] = useState('')
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [explanation, setExplanation] = useState('')
+  const [explaining, setExplaining] = useState(false)
 
-    if (!selectedFile) return;
+  const calculatedSubtotal = useMemo(
+    () => items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0),
+    [items],
+  )
+  function updateItem(index, field, value) {
+    setItems(current => current.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [field]: value } : item
+    )))
+    setResult(null)
+    setExplanation('')
+  }
 
-    const allowedTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-    ];
+  function loadExample() {
+    const example = makeDemoBill()
+    setPatientLabel(example.patientLabel)
+    setCurrency(example.currency)
+    setItems(example.items)
+    setTax(example.tax)
+    setBillTotal(example.total)
+    setResult(null)
+    setExplanation('')
+    setError('')
+  }
 
-    if (!allowedTypes.includes(selectedFile.type)) {
-      setFile(null);
-      setError('Please select a PDF, JPG, or PNG file.');
-      return;
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setError('')
+    setResult(null)
+    setExplanation('')
+
+    const normalizedItems = items.map(item => ({
+      description: item.description.trim(),
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      lineTotal: Number(item.lineTotal === '' ? Number(item.quantity) * Number(item.unitPrice) : item.lineTotal),
+    }))
+      if (normalizedItems.length > 500 || normalizedItems.some(item => !item.description || !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 1_000_000 || !Number.isFinite(item.unitPrice) || item.unitPrice < 0 || item.unitPrice > 1_000_000_000 || !Number.isFinite(item.lineTotal) || item.lineTotal < 0 || item.lineTotal > 1_000_000_000)) {
+      setError('Add a description and valid quantity and amounts for each line item.')
+      return
     }
 
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setFile(null);
-      setError('Your file is too large. Maximum file size is 10 MB.');
-      return;
+    const suppliedSubtotal = normalizedItems.reduce((sum, item) => sum + item.lineTotal, 0)
+    const suppliedTax = Number(tax)
+    const suppliedTotal = billTotal === '' ? suppliedSubtotal + suppliedTax : Number(billTotal)
+    if (!Number.isFinite(suppliedTax) || suppliedTax < 0 || suppliedTax > 1_000_000_000 || !Number.isFinite(suppliedTotal) || suppliedTotal < 0 || suppliedTotal > 1_000_000_000) {
+      setError('Tax and bill total must be valid non-negative amounts.')
+      return
     }
 
-    setFile(selectedFile);
-  }
-
-  function handleDrop(event) {
-    event.preventDefault();
-    setDragging(false);
-    validateFile(event.dataTransfer.files?.[0]);
-  }
-
-  function runDemo() {
-    if (!file || analyzing) return;
-
-    setAnalyzing(true);
-    setError('');
-    setShowResults(false);
-
-    // Demo only: no file is sent to an AI service.
-    window.setTimeout(() => {
-      setAnalyzing(false);
-      setDemoMode(true);
-      setShowResults(true);
-    }, 900);
-  }
-
-  function clearFile() {
-    setFile(null);
-    setError('');
-    setShowResults(false);
-    setDemoMode(false);
-
-    if (inputRef.current) {
-      inputRef.current.value = '';
+    setSaving(true)
+    try {
+      const savedBill = await onSave({
+        patientLabel: patientLabel.trim() || 'My bill',
+        currency,
+        items: normalizedItems,
+        subtotal: suppliedSubtotal,
+        tax: suppliedTax,
+        total: suppliedTotal,
+      })
+      setResult(savedBill)
+    } catch (saveError) {
+      setError(saveError.message || 'Could not save this bill. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const calculatedTotal = sampleAnalysis.items.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice,
-    0,
-  );
+  async function handleExplain() {
+    if (!result?.id) return
+    setError('')
+    setExplaining(true)
+    try {
+      const text = await onExplain(result.id)
+      setExplanation(text)
+    } catch (explainError) {
+      setError(explainError.message || 'Could not create an explanation.')
+    } finally {
+      setExplaining(false)
+    }
+  }
+
+  function resetForm() {
+    setItems([blankItem()])
+    setPatientLabel('')
+    setCurrency('INR')
+    setTax('0')
+    setBillTotal('')
+    setResult(null)
+    setExplanation('')
+    setError('')
+  }
 
   return (
     <div className="analyzer-page">
       <header className="analyzer-topbar">
-        <button className="back-button" onClick={onBack}>
-          <span aria-hidden="true">←</span> Back to dashboard
+        <button className="back-button" type="button" onClick={onBack}>
+          <span aria-hidden="true">←</span> Dashboard
         </button>
-
         <div className="analyzer-brand">
           <span className="brand-mark">+</span>
           <span>HealthCost <strong>AI</strong></span>
         </div>
-
-        <span className="demo-label">Frontend demo</span>
+        <span className="demo-label">{demoMode ? 'Local demo' : 'Bill checker'}</span>
       </header>
 
       <main className="analyzer-main">
         <section className="analyzer-intro">
-          <div className="eyebrow">
-            <span className="eyebrow-dot" />
-            MEDICAL BILL ANALYSIS
-          </div>
-
-          <h1>Understand your medical bill.</h1>
-
-          <p>
-            Upload a hospital bill to explore its charges, understand
-            unfamiliar items, and prepare questions for your billing team.
-          </p>
+          <div className="eyebrow"><span className="eyebrow-dot" /> BILL CHECKUP</div>
+          <h1>Make every line add up.</h1>
+          <p>Enter the amounts shown on your bill. We independently calculate the line totals and flag arithmetic differences for you to review.</p>
         </section>
 
-        <section className="upload-card">
+        <form className="upload-card bill-entry-form" onSubmit={handleSubmit}>
           <div className="section-heading">
             <div>
-              <h2>Upload your medical bill</h2>
-              <p>Choose a file from your device to get started.</p>
+              <h2>Bill details</h2>
+              <p>Only the information you enter is used. No document is uploaded.</p>
             </div>
-            <span className="step-badge">STEP 1</span>
+            {demoMode && <button className="secondary-button" type="button" onClick={loadExample}>Load example</button>}
           </div>
 
-          <div
-            className={`analyzer-dropzone ${dragging ? 'is-dragging' : ''} ${
-              file ? 'has-file' : ''
-            }`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-              className="visually-hidden"
-              onChange={(event) => validateFile(event.target.files?.[0])}
-              aria-label="Choose a medical bill file"
-            />
+          <div className="bill-fields">
+            <label>
+              Report name
+              <input value={patientLabel} onChange={event => setPatientLabel(event.target.value)} maxLength={100} placeholder="e.g. Hospital visit, October" />
+            </label>
+            <label>
+              Currency
+              <select value={currency} onChange={event => setCurrency(event.target.value)}>
+                {currencyOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          </div>
 
-            {file ? (
-              <>
-                <div className="file-icon">FILE</div>
-                <h3 className="selected-file-name">{file.name}</h3>
-                <p>
-                  {(file.size / (1024 * 1024)).toFixed(2)} MB · Ready for demo
-                </p>
-
-                <div className="file-actions">
-                  <button
-                    className="secondary-button"
-                    onClick={() => inputRef.current?.click()}
-                  >
-                    Choose another
-                  </button>
-                  <button className="text-button" onClick={clearFile}>
-                    Remove file
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="upload-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4.5 15.5v3A1.5 1.5 0 006 20h12a1.5 1.5 0 001.5-1.5v-3"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-
-                <h3>Drag and drop your bill here</h3>
-                <p>Or select a file from your device</p>
-
+          <div className="bill-items-heading">
+            <h3>Line items</h3>
+            <span>Enter the billed amount as printed</span>
+          </div>
+          <div className="bill-items">
+            {items.map((item, index) => (
+              <div className="bill-item-row" key={index}>
+                <label className="bill-description">
+                  Description
+                  <input value={item.description} onChange={event => updateItem(index, 'description', event.target.value)} maxLength={300} placeholder="e.g. Consultation" required />
+                </label>
+                <label>
+                  Qty
+                  <input type="number" min="0.01" max="1000000" step="any" value={item.quantity} onChange={event => updateItem(index, 'quantity', event.target.value)} required />
+                </label>
+                <label>
+                  Unit price
+                  <input type="number" min="0" max="1000000000" step="0.01" value={item.unitPrice} onChange={event => updateItem(index, 'unitPrice', event.target.value)} placeholder="0.00" required />
+                </label>
+                <label>
+                  Billed amount
+                  <input type="number" min="0" max="1000000000" step="0.01" value={item.lineTotal} onChange={event => updateItem(index, 'lineTotal', event.target.value)} placeholder="Auto" />
+                </label>
                 <button
-                  className="primary-button"
-                  onClick={() => inputRef.current?.click()}
-                >
-                  Browse files
-                </button>
+                  className="remove-line-button"
+                  type="button"
+                  aria-label={`Remove line ${index + 1}`}
+                  disabled={items.length === 1}
+                  onClick={() => {
+                    setItems(current => current.filter((_, itemIndex) => itemIndex !== index))
+                    setResult(null)
+                  }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+          <button className="add-line-button" type="button" onClick={() => setItems(current => [...current, blankItem()])}>+ Add another line item</button>
 
-                <span className="file-hint">
-                  PDF, JPG or PNG · Maximum 10 MB
-                </span>
-              </>
-            )}
+          <div className="bill-totals">
+            <div className="calculated-total">
+              <span>Calculated line-item subtotal</span>
+              <strong>{formatCurrency(calculatedSubtotal, currency)}</strong>
+            </div>
+            <label>
+              Tax / other charges
+              <input type="number" min="0" max="1000000000" step="0.01" value={tax} onChange={event => setTax(event.target.value)} />
+            </label>
+            <label>
+              Total shown on bill
+              <input type="number" min="0" max="1000000000" step="0.01" value={billTotal} onChange={event => setBillTotal(event.target.value)} placeholder={formatCurrency(calculatedSubtotal + (Number(tax) || 0), currency)} />
+            </label>
           </div>
 
-          {error && (
-            <div className="analyzer-error" role="alert">
-              <span aria-hidden="true">!</span> {error}
-            </div>
-          )}
-
+          {error && <div className="analyzer-error" role="alert">{error}</div>}
           <div className="privacy-note">
             <span aria-hidden="true">ⓘ</span>
-            <p>
-              <strong>Privacy reminder:</strong> This demo only selects a file
-              in your browser. It does not upload your bill to a server.
-            </p>
+            <p><strong>Private by design:</strong> manual entries only. Demo data stays in this browser; signed-in reports are saved to your account.</p>
           </div>
-
-          <button
-            className="analyze-button"
-            disabled={!file || analyzing}
-            onClick={runDemo}
-          >
-            {analyzing ? (
-              <>
-                <span className="loading-spinner" />
-                Preparing demo results...
-              </>
-            ) : (
-              <>
-                Analyze bill <span aria-hidden="true">→</span>
-              </>
-            )}
+          <button className="analyze-button" type="submit" disabled={saving}>
+            {saving ? 'Checking your bill…' : 'Check and save bill'} <span aria-hidden="true">→</span>
           </button>
+        </form>
 
-          <p className="demo-caption">
-            Demo mode: analysis results below use illustrative sample data,
-            not the contents of your uploaded file.
-          </p>
-        </section>
-
-        {showResults && (
+        {result && (
           <section className="analysis-results" aria-live="polite">
             <div className="results-heading">
               <div>
-                <div className="eyebrow">
-                  <span className="eyebrow-dot" />
-                  ANALYSIS PREVIEW
-                </div>
-                <h2>Your bill breakdown</h2>
-                <p>Illustrative results for demonstration purposes only.</p>
+                <div className="eyebrow"><span className="eyebrow-dot" /> BILL CHECK COMPLETE</div>
+                <h2>{result.patientLabel || patientLabel || 'Your bill'}</h2>
+                <p>Your report is saved. Review every difference with the provider.</p>
               </div>
-
-              {demoMode && <span className="sample-badge">SAMPLE DATA</span>}
+              <span className={`sample-badge ${result.validation?.isConsistent ? 'bill-ok-badge' : ''}`}>
+                {result.validation?.isConsistent ? 'TOTALS MATCH' : 'REVIEW DIFFERENCE'}
+              </span>
             </div>
-
             <div className="result-summary-grid">
-              <article className="result-summary-card">
-                <span>Bill total</span>
-                <strong>{formatCurrency(sampleAnalysis.total)}</strong>
-                <small>Illustrative amount</small>
-              </article>
-
-              <article className="result-summary-card">
-                <span>Line items</span>
-                <strong>{sampleAnalysis.items.length}</strong>
-                <small>Example charges</small>
-              </article>
-
-              <article className="result-summary-card">
-                <span>Calculated total</span>
-                <strong>{formatCurrency(calculatedTotal)}</strong>
-                <small>Sum of sample line items</small>
-              </article>
+              <article className="result-summary-card"><span>Calculated total</span><strong>{formatCurrency(result.total, result.currency || currency)}</strong><small>Based on line items and tax</small></article>
+              <article className="result-summary-card"><span>Line items</span><strong>{result.items?.length || items.length}</strong><small>Entered for this report</small></article>
+              <article className="result-summary-card"><span>Arithmetic check</span><strong>{result.validation?.isConsistent ? 'Looks consistent' : `${result.validation?.discrepancies?.length || 0} difference(s)`}</strong><small>Not a price or coverage judgment</small></article>
             </div>
-
             <article className="results-card">
-              <div className="results-card-heading">
-                <div>
-                  <h3>Itemized charges</h3>
-                  <p>{sampleAnalysis.hospital} · Example bill</p>
-                </div>
-                <span className="neutral-status">Not verified</span>
-              </div>
-
-              <div className="table-scroll">
-                <table className="charges-table">
-                  <thead>
-                    <tr>
-                      <th>Charge description</th>
-                      <th>Qty.</th>
-                      <th>Unit price</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sampleAnalysis.items.map((item) => (
-                      <tr key={item.name}>
-                        <td>
-                          <strong>{item.name}</strong>
-                          <small>{item.note}</small>
-                        </td>
-                        <td>{item.quantity}</td>
-                        <td>{formatCurrency(item.unitPrice)}</td>
-                        <td>{formatCurrency(item.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan="3">Calculated sample total</td>
-                      <td>{formatCurrency(calculatedTotal)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              <div className="calculation-note">
-                <span aria-hidden="true">ⓘ</span>
-                The example line items total {formatCurrency(calculatedTotal)},
-                while the sample bill total is{' '}
-                {formatCurrency(sampleAnalysis.total)}. This is a deliberately
-                illustrative difference for UI testing, not a finding about
-                your uploaded bill or a claim of overcharging.
-              </div>
+              <div className="results-card-heading"><div><h3>What we checked</h3><p>Calculated math only. We do not determine whether a charge is medically appropriate.</p></div></div>
+              {result.validation?.discrepancies?.length ? (
+                <ul className="difference-list">{result.validation.discrepancies.map((entry, index) => <li key={`${index}-${entry}`}>{entry}</li>)}</ul>
+              ) : (
+                <p className="no-difference-message">The entered line items, subtotal, and total are arithmetically consistent.</p>
+              )}
+              {!demoMode && (
+                <label className="consent-check">
+                  <input type="checkbox" id="ai-consent" />
+                  I consent to send the bill line items I entered to the AI provider. Descriptions may contain sensitive information; my account email and report name are not sent.
+                </label>
+              )}
+              {!demoMode && (
+                <button
+                  className="secondary-button explain-button"
+                  type="button"
+                  disabled={explaining}
+                  onClick={() => {
+                    if (!document.getElementById('ai-consent')?.checked) {
+                      setError('Please give consent before requesting an AI explanation.')
+                      return
+                    }
+                    handleExplain()
+                  }}
+                >{explaining ? 'Preparing explanation…' : 'Explain line items with AI'}</button>
+              )}
+              {demoMode && <p className="no-difference-message">AI explanations are disabled in local demo mode. No bill data leaves this browser.</p>}
+              {explanation && <div className="explanation-box"><h3>Plain-language explanation</h3><p>{explanation}</p></div>}
+              <div className="results-disclaimer"><strong>Important:</strong> This tool checks arithmetic, not medical necessity, fair pricing, insurance coverage, or fraud. Ask your billing office or insurer about uncertain charges.</div>
             </article>
-
-            <div className="result-two-column">
-              <article className="results-card">
-                <div className="insight-icon">i</div>
-                <h3>What these charges mean</h3>
-                <p>
-                  Consultation charges generally cover a clinician's visit.
-                  Laboratory charges relate to tests, while medication and room
-                  charges depend on the services and items supplied.
-                </p>
-                <p className="muted-copy">
-                  Actual inclusions and prices depend on the provider and bill.
-                  These explanations are general examples.
-                </p>
-              </article>
-
-              <article className="results-card questions-card">
-                <div className="insight-icon">?</div>
-                <h3>Questions to ask the hospital</h3>
-                <ul>
-                  {sampleAnalysis.questions.map((question) => (
-                    <li key={question}>{question}</li>
-                  ))}
-                </ul>
-              </article>
-            </div>
-
-            <div className="results-disclaimer">
-              <strong>Important:</strong> These are static sample results.
-              The uploaded document has not been read or analyzed. Check
-              charges with your healthcare provider before making a decision.
-            </div>
-
-            <button className="secondary-button new-analysis-button" onClick={clearFile}>
-              Start a new demo
-            </button>
+            <button className="secondary-button new-analysis-button" type="button" onClick={resetForm}>Check another bill</button>
           </section>
         )}
       </main>
     </div>
-  );
+  )
 }
