@@ -56,6 +56,7 @@ function createApp() {
   app.use('/api', csrfProtection)
   app.use('/api/auth', authRoutes)
   app.use('/api/bills', billRoutes)
+  app.get('/', (req, res) => res.json({ success: true, message: 'API is running' }))
 
   app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'API route not found' }))
 
