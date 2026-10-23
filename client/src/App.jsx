@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import BillAnalyzer from './pages/BillAnalyzer.jsx'
 import AuthPage from './components/AuthPage.jsx'
@@ -64,6 +64,13 @@ function App() {
   const [bills, setBills] = useState([])
   const [billsLoading, setBillsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedBill, setSelectedBill] = useState(null)
+  const reportDialogRef = useRef(null)
+
+  useEffect(() => {
+    const dialog = reportDialogRef.current
+    if (selectedBill && dialog && !dialog.open) dialog.showModal()
+  }, [selectedBill])
 
   useEffect(() => {
     let active = true
@@ -316,7 +323,10 @@ function App() {
                 <div className="report-row" key={bill.id}>
                   <div className="report-name-cell">
                     <span className="report-avatar">{(bill.patientLabel || 'B').slice(0, 2).toUpperCase()}</span>
-                    <strong>{bill.patientLabel || 'Medical bill'}</strong>
+                    <button type="button" className="report-view" onClick={() => setSelectedBill(bill)}>
+                      {bill.patientLabel || 'Medical bill'}
+                      <span>View details</span>
+                    </button>
                     <button type="button" className="report-delete" aria-label={`Delete ${bill.patientLabel || 'report'}`} title="Delete report" onClick={() => handleDeleteBill(bill.id)}>×</button>
                   </div>
                   <span className="report-category">{bill.items?.length || 0} line items</span>
@@ -328,6 +338,60 @@ function App() {
             </div>
             <p className="sample-disclaimer">Reports reflect only the amounts entered. They are not verified provider prices or a judgment about medical necessity, coverage, or fairness.</p>
           </section>
+
+          {selectedBill && (
+            <dialog
+              className="report-dialog"
+              ref={reportDialogRef}
+              aria-labelledby="report-dialog-title"
+              onClose={() => setSelectedBill(null)}
+            >
+              <div className="report-dialog-header">
+                <div>
+                  <div className="section-kicker">SAVED REPORT</div>
+                  <h2 id="report-dialog-title">{selectedBill.patientLabel || 'Medical bill'}</h2>
+                  <p>{selectedBill.createdAt ? new Date(selectedBill.createdAt).toLocaleString() : 'Saved report'}</p>
+                </div>
+                <button type="button" className="report-dialog-close" aria-label="Close report details" onClick={() => reportDialogRef.current?.close()}>×</button>
+              </div>
+              <div className="report-dialog-summary">
+                <div><span>Subtotal</span><strong>{formatCurrency(selectedBill.subtotal, selectedBill.currency || 'INR')}</strong></div>
+                <div><span>Tax / other charges</span><strong>{formatCurrency(selectedBill.tax, selectedBill.currency || 'INR')}</strong></div>
+                <div><span>Calculated total</span><strong>{formatCurrency(selectedBill.total, selectedBill.currency || 'INR')}</strong></div>
+              </div>
+              <section className="report-dialog-section">
+                <h3>Line items ({selectedBill.items?.length || 0})</h3>
+                {selectedBill.items?.length ? (
+                  <div className="report-dialog-items">
+                    {selectedBill.items.map((item, index) => (
+                      <article className="report-dialog-item" key={`${item.description}-${index}`}>
+                        <div>
+                          <strong>{item.description}</strong>
+                          <span>Quantity: {item.quantity} × {formatCurrency(item.unitPrice, selectedBill.currency || 'INR')}</span>
+                          <span>Billed: {formatCurrency(item.submittedLineTotal ?? item.lineTotal ?? item.calculatedLineTotal, selectedBill.currency || 'INR')}</span>
+                        </div>
+                        <div className="report-dialog-calculated">
+                          <span>Calculated</span>
+                          <strong>{formatCurrency(item.calculatedLineTotal ?? item.lineTotal ?? item.submittedLineTotal, selectedBill.currency || 'INR')}</strong>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : <p className="report-dialog-empty">No line items were saved for this report.</p>}
+              </section>
+              <section className="report-dialog-section">
+                <h3>Arithmetic check</h3>
+                {selectedBill.validation?.discrepancies?.length ? (
+                  <ul className="difference-list">
+                    {selectedBill.validation.discrepancies.map((entry, index) => <li key={`${index}-${entry}`}>{entry}</li>)}
+                  </ul>
+                ) : (
+                  <p className="report-dialog-empty">The saved amounts are arithmetically consistent.</p>
+                )}
+              </section>
+              <p className="report-dialog-disclaimer">This report checks arithmetic only. It does not verify medical necessity, fair pricing, or insurance coverage.</p>
+            </dialog>
+          )}
 
           <footer className="page-footer"><span>© 2026 HealthCost AI</span><span>Built for clarity, designed for people.</span><span>Not a substitute for medical advice.</span></footer>
         </div>
