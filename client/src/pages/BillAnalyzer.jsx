@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import './BillAnalyzer.css'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 
 const blankItem = () => ({ description: '', quantity: '1', unitPrice: '', lineTotal: '' })
 
@@ -27,7 +28,7 @@ function makeDemoBill() {
   }
 }
 
-export default function BillAnalyzer({ onBack, onSave, onAnalyzeUpload, onExplain, demoMode = false }) {
+export default function BillAnalyzer({ onBack, onSave, onAnalyzeUpload, onExplain, demoMode = false, theme, onToggleTheme }) {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadConsent, setUploadConsent] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -171,7 +172,10 @@ export default function BillAnalyzer({ onBack, onSave, onAnalyzeUpload, onExplai
           <span className="brand-mark">+</span>
           <span>HealthCost <strong>AI</strong></span>
         </div>
-        <span className="demo-label">{demoMode ? 'Local demo' : 'Bill checker'}</span>
+        <div className="analyzer-topbar-actions">
+          <span className="demo-label">{demoMode ? 'Local demo' : 'Bill checker'}</span>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        </div>
       </header>
 
       <main className="analyzer-main">

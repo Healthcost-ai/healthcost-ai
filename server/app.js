@@ -10,6 +10,7 @@ const mongoose = require('mongoose')
 const authRoutes = require('./src/routes/authRoutes')
 const billRoutes = require('./src/routes/billRoutes')
 const treatmentPriceRoutes = require('./src/routes/treatmentPriceRoutes')
+const savingsRoutes = require('./src/routes/savingsRoutes')
 const { loadEnv } = require('./src/config/env')
 const { issueCsrf, csrfProtection } = require('./src/middleware/security')
 
@@ -59,6 +60,7 @@ function createApp() {
   app.use('/api/auth', authRoutes)
   app.use('/api/bills', billRoutes)
   app.use('/api/treatment-prices', treatmentPriceRoutes)
+  app.use('/api/savings', savingsRoutes)
 
   app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'API route not found' }))
 

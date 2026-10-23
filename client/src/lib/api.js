@@ -46,6 +46,23 @@ export async function getCghsHospitals(cityId, options = {}) {
   return request(`/treatment-prices/hospitals?${params}`, options)
 }
 
+export async function getSavingsRecords() {
+  return request('/savings')
+}
+
+export async function createSavingsRecord(record) {
+  return secureRequest('/savings', {
+    method: 'POST',
+    body: JSON.stringify(record),
+  })
+}
+
+export async function deleteSavingsRecord(id) {
+  return secureRequest(`/savings/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function getCsrfToken() {
   const data = await request('/auth/csrf')
   csrfToken = data.csrfToken

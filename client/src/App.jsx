@@ -2,10 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import BillAnalyzer from './pages/BillAnalyzer.jsx'
 import TreatmentPriceFinder from './pages/TreatmentPriceFinder.jsx'
+import PersonalSavingsDashboard from './components/PersonalSavingsDashboard.jsx'
 import AuthPage from './components/AuthPage.jsx'
-import { analyzeBillUpload as uploadBillForAnalysis, createBill, deleteBill, explainBill, getBills, getCurrentUser, logout } from './lib/api'
+import ThemeToggle from './components/ThemeToggle.jsx'
+import {
+  analyzeBillUpload as uploadBillForAnalysis,
+  createBill,
+  createSavingsRecord,
+  deleteBill,
+  deleteSavingsRecord,
+  explainBill,
+  getBills,
+  getCurrentUser,
+  getSavingsRecords,
+  logout,
+} from './lib/api'
+import './theme.css'
 
 const DEMO_STORAGE_KEY = 'healthcost-ai-demo-bills'
+const DEMO_SAVINGS_STORAGE_KEY = 'healthcost-ai-demo-savings'
+const THEME_STORAGE_KEY = 'healthcost-ai-theme'
 
 function formatCurrency(amount, currency = 'INR') {
   return new Intl.NumberFormat('en-IN', {
@@ -21,6 +37,14 @@ function readDemoBills() {
   const bills = JSON.parse(saved)
   if (!Array.isArray(bills)) throw new Error('Saved demo reports are not in a readable format.')
   return bills
+}
+
+function readDemoSavings() {
+  const saved = window.localStorage.getItem(DEMO_SAVINGS_STORAGE_KEY)
+  if (!saved) return []
+  const records = JSON.parse(saved)
+  if (!Array.isArray(records)) throw new Error('Saved demo savings records are not in a readable format.')
+  return records
 }
 
 function calculateDemoBill(input) {
@@ -59,14 +83,27 @@ function calculateDemoBill(input) {
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light')
   const [authStatus, setAuthStatus] = useState('loading')
   const [user, setUser] = useState(null)
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [bills, setBills] = useState([])
+  const [savingsRecords, setSavingsRecords] = useState([])
   const [billsLoading, setBillsLoading] = useState(true)
+  const [savingsLoading, setSavingsLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedBill, setSelectedBill] = useState(null)
   const reportDialogRef = useRef(null)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
+
+  function toggleTheme() {
+    setTheme(current => current === 'dark' ? 'light' : 'dark')
+  }
 
   useEffect(() => {
     const dialog = reportDialogRef.current
@@ -92,15 +129,30 @@ function App() {
   useEffect(() => {
     if (authStatus !== 'authenticated') return
     let active = true
-    const load = user?.demoMode
+    const billLoad = user?.demoMode
       ? Promise.resolve().then(readDemoBills)
       : getBills().then(data => data.bills || [])
-    load.then(loadedBills => {
-      if (active) setBills(loadedBills)
-    }).catch(loadError => {
-      if (active) setError(loadError.message || 'Could not load saved reports.')
+    const savingsLoad = user?.demoMode
+      ? Promise.resolve().then(readDemoSavings)
+      : getSavingsRecords().then(data => data.records || [])
+    Promise.allSettled([billLoad, savingsLoad]).then(([billResult, savingsResult]) => {
+      if (active) {
+        if (billResult.status === 'fulfilled') {
+          setBills(billResult.value)
+        } else {
+          setError(billResult.reason.message || 'Could not load saved reports.')
+        }
+        if (savingsResult.status === 'fulfilled') {
+          setSavingsRecords(savingsResult.value)
+        } else {
+          setError(savingsResult.reason.message || 'Could not load savings records.')
+        }
+      }
     }).finally(() => {
-      if (active) setBillsLoading(false)
+      if (active) {
+        setBillsLoading(false)
+        setSavingsLoading(false)
+      }
     })
     return () => { active = false }
   }, [authStatus, user])
@@ -118,6 +170,38 @@ function App() {
       setBills(current => [savedBill, ...current])
     }
     return savedBill
+  }
+
+  async function saveSavingsRecord(record) {
+    let savedRecord
+    if (user?.demoMode) {
+      savedRecord = { ...record, id: `demo-savings-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date().toISOString() }
+      const updated = [savedRecord, ...savingsRecords]
+      window.localStorage.setItem(DEMO_SAVINGS_STORAGE_KEY, JSON.stringify(updated))
+      setSavingsRecords(updated)
+    } else {
+      const response = await createSavingsRecord(record)
+      savedRecord = response.record
+      setSavingsRecords(current => [savedRecord, ...current])
+    }
+    return savedRecord
+  }
+
+  async function handleDeleteSavingsRecord(id) {
+    if (!window.confirm('Delete this savings record? This cannot be undone.')) return
+    setError('')
+    try {
+      if (user?.demoMode) {
+        const updated = savingsRecords.filter(record => record.id !== id)
+        window.localStorage.setItem(DEMO_SAVINGS_STORAGE_KEY, JSON.stringify(updated))
+        setSavingsRecords(updated)
+      } else {
+        await deleteSavingsRecord(id)
+        setSavingsRecords(current => current.filter(record => record.id !== id))
+      }
+    } catch (deleteError) {
+      setError(deleteError.message || 'Could not delete this savings record.')
+    }
   }
 
   async function analyzeUploadedBill(file) {
@@ -174,25 +258,30 @@ function App() {
     }
     setUser(null)
     setBills([])
+    setSavingsRecords([])
     setCurrentPage('dashboard')
     setAuthStatus('unauthenticated')
   }
 
   if (authStatus === 'loading') {
-    return <main className="auth-page"><p>Loading your workspace…</p></main>
+    return <main className="auth-page"><ThemeToggle theme={theme} onToggle={toggleTheme} /><p>Loading your workspace…</p></main>
   }
 
   if (authStatus === 'unauthenticated') {
     return (
       <AuthPage
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onAuthenticated={authenticatedUser => {
           setBillsLoading(true)
+          setSavingsLoading(true)
           setError('')
           setUser(authenticatedUser)
           setAuthStatus('authenticated')
         }}
         onDemo={() => {
           setBillsLoading(true)
+          setSavingsLoading(true)
           setError('')
           setUser({ email: 'Local demo', demoMode: true })
           setAuthStatus('authenticated')
@@ -205,6 +294,8 @@ function App() {
     return (
       <BillAnalyzer
         demoMode={user?.demoMode}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onBack={() => setCurrentPage('dashboard')}
         onSave={saveBill}
         onAnalyzeUpload={analyzeUploadedBill}
@@ -214,7 +305,14 @@ function App() {
   }
 
   if (currentPage === 'treatmentFinder') {
-    return <TreatmentPriceFinder onBack={() => setCurrentPage('dashboard')} />
+    return (
+      <TreatmentPriceFinder
+        onBack={() => setCurrentPage('dashboard')}
+        onSaveComparison={saveSavingsRecord}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    )
   }
 
   const trackedTotal = bills
@@ -238,6 +336,7 @@ function App() {
           <a href="#dashboard" className="nav-link active"><span className="nav-icon">▦</span>Dashboard</a>
           <button type="button" className="nav-link nav-button" onClick={() => setCurrentPage('analyzer')}><span className="nav-icon">＋</span>Check a bill</button>
           <button type="button" className="nav-link nav-button" onClick={() => setCurrentPage('treatmentFinder')}><span className="nav-icon">₹</span>Treatment price finder</button>
+          <a href="#savings" className="nav-link"><span className="nav-icon">↗</span>Savings dashboard</a>
           <a href="#reports" className="nav-link"><span className="nav-icon">▤</span>Saved reports</a>
         </nav>
         <div className="sidebar-spacer" />
@@ -256,6 +355,7 @@ function App() {
           <div className="topbar-actions">
             <span className="preview-label"><span className="online-dot" />{user?.demoMode ? 'Demo mode' : 'Signed in'}</span>
             <span className="profile-email">{user?.demoMode ? 'Data stays in this browser' : user?.email}</span>
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <button type="button" className="profile-button" aria-label="Sign out" title="Sign out" onClick={handleSignOut}>↪</button>
           </div>
         </header>
@@ -289,6 +389,15 @@ function App() {
               <div className="summary-bottom"><strong className="summary-value">{bills.filter(bill => !bill.validation?.isConsistent).length}</strong><span className="summary-note">Reports to review</span></div>
             </article>
           </section>
+
+          <PersonalSavingsDashboard
+            bills={bills}
+            records={savingsRecords}
+            loading={savingsLoading}
+            onAddManualRecord={saveSavingsRecord}
+            onDeleteRecord={handleDeleteSavingsRecord}
+            onFindRates={() => setCurrentPage('treatmentFinder')}
+          />
 
           <section className="content-grid">
             <article className="panel upload-panel">

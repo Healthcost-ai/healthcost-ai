@@ -1,8 +1,9 @@
 
 import { useEffect, useState } from 'react'
 import { login, register, resendVerification, verifyEmail } from '../lib/api'
+import ThemeToggle from './ThemeToggle.jsx'
 
-export default function AuthPage({ onAuthenticated, onDemo }) {
+export default function AuthPage({ onAuthenticated, onDemo, theme, onToggleTheme }) {
   const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).has('token') ? 'verify' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -87,6 +88,7 @@ export default function AuthPage({ onAuthenticated, onDemo }) {
 
   return (
     <main className="auth-page">
+      <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       <section className="auth-card">
         <a className="auth-brand" href="/" aria-label="HealthCost AI home">
           <span className="auth-brand-mark">+</span>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './TreatmentPriceFinder.css'
 import { getCghsCities, getCghsHospitals, searchTreatmentPrices } from '../lib/api'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 
 const tiers = [
   { value: 'tier_i', label: 'Tier I' },
@@ -28,7 +29,7 @@ function formatRupees(amount) {
   }).format(amount)
 }
 
-export default function TreatmentPriceFinder({ onBack }) {
+export default function TreatmentPriceFinder({ onBack, onSaveComparison, theme, onToggleTheme }) {
   const [query, setQuery] = useState('')
   const [tier, setTier] = useState('tier_i')
   const [facility, setFacility] = useState('nabh')
@@ -36,6 +37,11 @@ export default function TreatmentPriceFinder({ onBack }) {
   const [results, setResults] = useState(null)
   const [resultsFilter, setResultsFilter] = useState('')
   const [selectedTreatment, setSelectedTreatment] = useState(null)
+  const [comparisonTreatment, setComparisonTreatment] = useState(null)
+  const [billAmount, setBillAmount] = useState('')
+  const [comparisonError, setComparisonError] = useState('')
+  const [comparisonStatus, setComparisonStatus] = useState('')
+  const [comparisonSaving, setComparisonSaving] = useState(false)
   const [cities, setCities] = useState([])
   const [citiesError, setCitiesError] = useState('')
   const [cityId, setCityId] = useState('')
@@ -117,6 +123,8 @@ export default function TreatmentPriceFinder({ onBack }) {
 
   function chooseSuggestion(rate) {
     if (!suggestions) return
+    setComparisonTreatment(null)
+    setComparisonStatus('')
     setSelectedTreatment(rate)
     setHospitalResults(null)
     setHospitalError('')
@@ -141,6 +149,8 @@ export default function TreatmentPriceFinder({ onBack }) {
     setSelectedTreatment(null)
     setHospitalResults(null)
     setHospitalError('')
+    setComparisonTreatment(null)
+    setComparisonStatus('')
     if (query.trim().length < 2) {
       setError('Enter at least two characters to search treatments.')
       return
@@ -156,12 +166,44 @@ export default function TreatmentPriceFinder({ onBack }) {
     }
   }
 
+  async function handleSaveComparison(event) {
+    event.preventDefault()
+    setComparisonError('')
+    setComparisonStatus('')
+    const actualAmount = Number(billAmount)
+    if (!Number.isFinite(actualAmount) || actualAmount < 0 || actualAmount > 1_000_000_000) {
+      setComparisonError('Enter a valid non-negative amount from your bill.')
+      return
+    }
+    setComparisonSaving(true)
+    try {
+      await onSaveComparison({
+        recordType: 'cghs_comparison',
+        title: comparisonTreatment.procedure,
+        amount: actualAmount,
+        currency: 'INR',
+        referenceAmount: comparisonTreatment.rate,
+        rateCategory: `${tier.replace('_', ' ').toUpperCase()} · ${facilities.find(item => item.value === facility)?.label} · ${wards.find(item => item.value === ward)?.label}`,
+        cghsCode: comparisonTreatment.code || '',
+      })
+      setComparisonStatus('Comparison saved to your Personal Healthcare Savings Dashboard.')
+      setBillAmount('')
+    } catch (saveError) {
+      setComparisonError(saveError.message || 'Could not save this comparison.')
+    } finally {
+      setComparisonSaving(false)
+    }
+  }
+
   return (
     <div className="treatment-finder-page">
       <header className="treatment-finder-topbar">
         <button className="treatment-back-button" type="button" onClick={onBack}>← Dashboard</button>
         <div className="treatment-finder-brand"><span aria-hidden="true">₹</span> Treatment Price Finder</div>
-        <span className="treatment-source-badge">OFFICIAL CGHS DATA</span>
+        <div className="treatment-header-actions">
+          <span className="treatment-source-badge">OFFICIAL CGHS DATA</span>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        </div>
       </header>
 
       <main className="treatment-finder-main">
@@ -185,6 +227,8 @@ export default function TreatmentPriceFinder({ onBack }) {
                   setQuery(event.target.value)
                   setResults(null)
                   setResultsFilter('')
+                  setComparisonTreatment(null)
+                  setComparisonStatus('')
                   setSelectedTreatment(null)
                   setHospitalResults(null)
                   setHospitalError('')
@@ -302,7 +346,7 @@ export default function TreatmentPriceFinder({ onBack }) {
                 {results.total > results.rates.length && <p className="treatment-result-count">Showing the first {results.rates.length} results. Refine your search to narrow the list.</p>}
                 {visibleRates.length > 0 ? <div className="treatment-results-table-wrap">
                   <table className="treatment-results-table">
-                    <thead><tr><th>Procedure</th><th>Specialty</th><th>CGHS code</th><th>Published rate</th><th>Hospitals</th></tr></thead>
+                    <thead><tr><th>Procedure</th><th>Specialty</th><th>CGHS code</th><th>Published rate</th><th>Compare</th><th>Hospitals</th></tr></thead>
                     <tbody>
                       {visibleRates.map((rate, index) => (
                         <tr key={`${rate.code}-${index}`}>
@@ -310,6 +354,12 @@ export default function TreatmentPriceFinder({ onBack }) {
                           <td>{rate.specialty || '—'}</td>
                           <td>{rate.code || '—'}</td>
                           <td>{formatRupees(rate.rate)}</td>
+                          <td><button className="treatment-hospital-link" type="button" onClick={() => {
+                            setComparisonTreatment(rate)
+                            setComparisonStatus('')
+                            setComparisonError('')
+                            setBillAmount('')
+                          }}>Compare bill</button></td>
                           <td><button className="treatment-hospital-link" type="button" onClick={() => {
                             setSelectedTreatment(rate)
                             setHospitalResults(null)
@@ -326,6 +376,29 @@ export default function TreatmentPriceFinder({ onBack }) {
                 </p>
               </>
             )}
+          </section>
+        )}
+
+        {comparisonTreatment && (
+          <section className="treatment-comparison-form" aria-labelledby="treatment-comparison-title">
+            <div className="treatment-results-heading">
+              <div><span>PERSONAL SAVINGS TRACKER</span><h2 id="treatment-comparison-title">Compare your bill with this CGHS reference</h2></div>
+            </div>
+            <div className="treatment-comparison-reference">
+              <strong>{comparisonTreatment.procedure}</strong>
+              <span>CGHS code: {comparisonTreatment.code || 'Not listed'}</span>
+              <span>Published CGHS rate: {formatRupees(comparisonTreatment.rate)}</span>
+            </div>
+            <form onSubmit={handleSaveComparison}>
+              <label>
+                Amount shown on your bill (INR)
+                <input type="number" value={billAmount} onChange={event => setBillAmount(event.target.value)} min="0" max="1000000000" step="0.01" required placeholder="Enter billed amount" />
+              </label>
+              <p>This comparison is a reference only. CGHS rates may not apply to your treatment or provider and are not general market prices.</p>
+              {comparisonError && <p className="treatment-finder-error" role="alert">{comparisonError}</p>}
+              {comparisonStatus && <p className="treatment-comparison-success" role="status">{comparisonStatus} <button type="button" onClick={onBack}>View dashboard</button></p>}
+              <button className="treatment-search-button" type="submit" disabled={comparisonSaving}>{comparisonSaving ? 'Saving…' : 'Save comparison'}</button>
+            </form>
           </section>
         )}
 
