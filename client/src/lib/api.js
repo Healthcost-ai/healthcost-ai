@@ -32,6 +32,11 @@ export async function checkBackend() {
   return request('/health/ready')
 }
 
+export async function searchTreatmentPrices({ query, tier, facility, ward }, options = {}) {
+  const params = new URLSearchParams({ query, tier, facility, ward })
+  return request(`/treatment-prices?${params}`, options)
+}
+
 export async function getCsrfToken() {
   const data = await request('/auth/csrf')
   csrfToken = data.csrfToken

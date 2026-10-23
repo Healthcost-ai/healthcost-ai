@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import BillAnalyzer from './pages/BillAnalyzer.jsx'
+import TreatmentPriceFinder from './pages/TreatmentPriceFinder.jsx'
 import AuthPage from './components/AuthPage.jsx'
 import { analyzeBillUpload as uploadBillForAnalysis, createBill, deleteBill, explainBill, getBills, getCurrentUser, logout } from './lib/api'
 
@@ -212,6 +213,10 @@ function App() {
     )
   }
 
+  if (currentPage === 'treatmentFinder') {
+    return <TreatmentPriceFinder onBack={() => setCurrentPage('dashboard')} />
+  }
+
   const trackedTotal = bills
     .filter(bill => bill.currency === 'INR')
     .reduce((sum, bill) => sum + (Number(bill.total) || 0), 0)
@@ -232,6 +237,7 @@ function App() {
         <nav className="sidebar-nav" aria-label="Main navigation">
           <a href="#dashboard" className="nav-link active"><span className="nav-icon">▦</span>Dashboard</a>
           <button type="button" className="nav-link nav-button" onClick={() => setCurrentPage('analyzer')}><span className="nav-icon">＋</span>Check a bill</button>
+          <button type="button" className="nav-link nav-button" onClick={() => setCurrentPage('treatmentFinder')}><span className="nav-icon">₹</span>Treatment price finder</button>
           <a href="#reports" className="nav-link"><span className="nav-icon">▤</span>Saved reports</a>
         </nav>
         <div className="sidebar-spacer" />
@@ -305,7 +311,9 @@ function App() {
                 <li><strong>Arithmetic validation</strong><span>Line-by-line math, independently recalculated.</span></li>
                 <li><strong>Saved bill history</strong><span>Find recent reports in your workspace.</span></li>
                 <li><strong>Privacy-first explanations</strong><span>AI explanation is optional and requires consent.</span></li>
+                <li><strong>Government rate reference</strong><span>Search official CGHS treatment rates by tier and ward.</span></li>
               </ul>
+              <button type="button" className="text-button" onClick={() => setCurrentPage('treatmentFinder')}>Find treatment rates <span>→</span></button>
               <p className="medical-disclaimer">This is not medical, insurance, or legal advice. A math difference is not proof of an incorrect or unfair charge.</p>
             </article>
           </section>
