@@ -219,8 +219,8 @@ function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#dashboard" onClick={event => event.preventDefault()}>
-          <span className="brand-mark" aria-hidden="true">
+        <a className="brand" href="#dashboard" aria-label="HealthCost AI dashboard">
+          <span className="dashboard-brand-mark" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none">
               <rect width="40" height="40" rx="12" fill="currentColor" />
               <path d="M20 10V30M10 20H30" stroke="white" strokeWidth="4" strokeLinecap="round" />

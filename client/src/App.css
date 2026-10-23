@@ -64,14 +64,14 @@ a:focus-visible {
   text-decoration: none;
 }
 
-.brand-mark,
-.brand-mark svg {
+.dashboard-brand-mark,
+.dashboard-brand-mark svg {
   display: block;
   width: 42px;
   height: 42px;
 }
 
-.brand-mark {
+.dashboard-brand-mark {
   color: var(--green);
 }
 
@@ -1460,8 +1460,8 @@ a:focus-visible {
     padding: 0;
   }
 
-  .brand-mark,
-  .brand-mark svg {
+  .dashboard-brand-mark,
+  .dashboard-brand-mark svg {
     width: 36px;
     height: 36px;
   }
