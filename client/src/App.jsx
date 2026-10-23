@@ -1,8 +1,10 @@
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import BillAnalyzer from './pages/BillAnalyzer.jsx';
 import AnalysisPreview from './components/AnalysisPreview.jsx'
+import AuthPage from './components/AuthPage.jsx'
+import { checkBackend, getCurrentUser, logout } from './lib/api'
 
 const sampleReports = [
   {
@@ -43,6 +45,23 @@ function formatCurrency(amount) {
 }
 
 function App() {
+  useEffect(() => {
+  getCurrentUser()
+    .then((data) => {
+      console.log(
+        'Current user:',
+        data.user ? data.user.email : 'Not signed in'
+      )
+    })
+    .catch((error) => {
+      console.error('Authentication check failed:', error.message)
+    })
+}, [])
+  useEffect(() => {
+  checkBackend()
+    .then((data) => console.log('Backend connected:', data))
+    .catch((error) => console.error('Backend connection failed:', error))
+}, [])
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [showDemoResults, setShowDemoResults] = useState(false)
   const fileInputRef = useRef(null)
@@ -50,6 +69,31 @@ function App() {
   const [notice, setNotice] = useState('')
   const [activeNav, setActiveNav] = useState('Dashboard')
   const [isDragging, setIsDragging] = useState(false)
+  const [authStatus, setAuthStatus] = useState('loading')
+const [user, setUser] = useState(null)
+
+useEffect(() => {
+  let active = true
+
+  getCurrentUser()
+    .then((data) => {
+      if (!active) return
+
+      setUser(data.user || null)
+      setAuthStatus(data.user ? 'authenticated' : 'unauthenticated')
+    })
+    .catch((error) => {
+      if (!active) return
+
+      console.error('Authentication check failed:', error.message)
+      setUser(null)
+      setAuthStatus('unauthenticated')
+    })
+
+  return () => {
+    active = false
+  }
+}, [])
 
   function selectFile(file) {
     setNotice('')
@@ -120,6 +164,24 @@ function App() {
       })
     }
   }
+  if (authStatus === 'loading') {
+  return (
+    <main className="auth-page">
+      <p>Checking your secure session...</p>
+    </main>
+  )
+}
+
+if (authStatus === 'unauthenticated') {
+  return (
+    <AuthPage
+      onAuthenticated={(loggedInUser) => {
+        setUser(loggedInUser)
+        setAuthStatus('authenticated')
+      }}
+    />
+  )
+}
 if (currentPage === 'analyzer') {
   return (
     <BillAnalyzer
@@ -215,21 +277,37 @@ if (currentPage === 'analyzer') {
             <span className="topbar-page">Dashboard</span>
           </div>
 
-          <div className="topbar-actions">
-            <span className="preview-label">
-              <span className="online-dot" />
-              Demo mode
-            </span>
-            <button
-              type="button"
-              className="profile-button"
-              aria-label="User profile"
-              title="User profile"
-              onClick={() => setNotice('User accounts will be added later.')}
-            >
-              U
-            </button>
-          </div>
+          
+<div className="topbar-actions">
+  <span className="preview-label">
+    <span className="online-dot" />
+    Signed in
+  </span>
+
+  <span className="profile-email">
+    {user?.email}
+  </span>
+
+  <button
+    type="button"
+    className="profile-button"
+    aria-label="Sign out"
+    title="Sign out"
+    onClick={async () => {
+      try {
+        await logout()
+      } catch (error) {
+        console.error('Sign-out request failed:', error.message)
+      } finally {
+        setUser(null)
+        setAuthStatus('unauthenticated')
+      }
+    }}
+  >
+    ↪
+  </button>
+</div>
+
         </header>
 
         <div className="dashboard-content">

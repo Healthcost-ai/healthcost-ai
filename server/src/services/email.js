@@ -18,7 +18,17 @@ function getTransporter() {
   })
   return transporter
 }
+async function verifyEmailTransport() {
+  const transport = getTransporter()
 
+  if (!transport) {
+    console.log('SMTP is not configured; using development fallback')
+    return
+  }
+
+  await transport.verify()
+  console.log('SMTP connection and authentication verified')
+}
 async function sendVerificationEmail(email, token) {
   const env = loadEnv()
   const transport = getTransporter()
@@ -38,3 +48,7 @@ async function sendVerificationEmail(email, token) {
 }
 
 module.exports = { sendVerificationEmail }
+module.exports = {
+  sendVerificationEmail,
+  verifyEmailTransport
+}
