@@ -136,6 +136,17 @@ export async function createBill(bill) {
   })
 }
 
+export async function analyzeBillUpload(file, demoMode = false) {
+  const formData = new FormData()
+  formData.append('bill', file)
+  formData.append('consentToExternalProcessing', 'true')
+  const endpoint = demoMode ? '/demo/analyze-upload' : '/bills/analyze-upload'
+  return secureRequest(endpoint, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
 export async function deleteBill(id) {
   return secureRequest(`/bills/${encodeURIComponent(id)}`, {
     method: 'DELETE',

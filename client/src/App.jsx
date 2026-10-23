@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import BillAnalyzer from './pages/BillAnalyzer.jsx'
 import AuthPage from './components/AuthPage.jsx'
-import { createBill, deleteBill, explainBill, getBills, getCurrentUser, logout } from './lib/api'
+import { analyzeBillUpload as uploadBillForAnalysis, createBill, deleteBill, explainBill, getBills, getCurrentUser, logout } from './lib/api'
 
 const DEMO_STORAGE_KEY = 'healthcost-ai-demo-bills'
 
@@ -25,13 +25,14 @@ function readDemoBills() {
 function calculateDemoBill(input) {
   const discrepancies = []
   const items = input.items.map((item, index) => {
+    const submittedLineTotal = item.lineTotal ?? item.submittedLineTotal ?? item.calculatedLineTotal
     const calculatedLineTotal = Math.round(item.quantity * item.unitPrice * 100) / 100
-    if (Math.abs(calculatedLineTotal - item.lineTotal) > 0.01) {
-      discrepancies.push(`Item ${index + 1} (${item.description}): calculated ${formatCurrency(calculatedLineTotal, input.currency)}, billed ${formatCurrency(item.lineTotal, input.currency)}`)
+    if (Math.abs(calculatedLineTotal - submittedLineTotal) > 0.01) {
+      discrepancies.push(`Item ${index + 1} (${item.description}): calculated ${formatCurrency(calculatedLineTotal, input.currency)}, billed ${formatCurrency(submittedLineTotal, input.currency)}`)
     }
     return {
       ...item,
-      submittedLineTotal: item.lineTotal,
+      submittedLineTotal,
       calculatedLineTotal,
     }
   })
@@ -111,6 +112,27 @@ function App() {
     return savedBill
   }
 
+  async function analyzeUploadedBill(file) {
+    const response = await uploadBillForAnalysis(file, user?.demoMode)
+    let analyzedBill = response.bill
+    if (user?.demoMode) {
+      analyzedBill = calculateDemoBill({
+        ...response.bill,
+        items: response.bill.items.map(item => ({
+          ...item,
+          lineTotal: item.submittedLineTotal,
+        })),
+      })
+      analyzedBill.validation = response.bill.validation
+      const updated = [analyzedBill, ...bills]
+      window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(updated))
+      setBills(updated)
+    } else {
+      setBills(current => [analyzedBill, ...current])
+    }
+    return { ...response, bill: analyzedBill }
+  }
+
   async function handleExplain(id) {
     const response = await explainBill(id, true)
     return response.explanation
@@ -177,6 +199,7 @@ function App() {
         demoMode={user?.demoMode}
         onBack={() => setCurrentPage('dashboard')}
         onSave={saveBill}
+        onAnalyzeUpload={analyzeUploadedBill}
         onExplain={handleExplain}
       />
     )

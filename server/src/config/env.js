@@ -4,7 +4,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(5000),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5173'),
-  MONGODB_URI: z.string().min(1),
+  MONGODB_URI: z.string().optional().default(''),
   JWT_ACCESS_SECRET: z.string().min(32),
   CSRF_HMAC_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL: z.string().default('10m'),
@@ -12,8 +12,8 @@ const schema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   COOKIE_SECURE: z.string().default('false').transform(v => v === 'true'),
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
-  OPENAI_API_KEY: z.string().optional().default(''),
-  OPENAI_MODEL: z.string().default('gpt-4.1-mini'),
+  GEMINI_API_KEY: z.string().optional().default(''),
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
   SMTP_HOST: z.string().optional().default(''),
   SMTP_PORT: z.coerce.number().int().default(587),
   SMTP_SECURE: z.string().default('false').transform(v => v === 'true'),
@@ -31,6 +31,7 @@ function loadEnv() {
     throw new Error('Invalid environment configuration; check .env.example')
   }
   if (result.data.NODE_ENV === 'production') {
+    if (!result.data.MONGODB_URI) throw new Error('MONGODB_URI is required in production')
     if (!result.data.COOKIE_SECURE) throw new Error('COOKIE_SECURE must be true in production')
     if (!result.data.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is required in production')
     if (!result.data.SMTP_HOST || !result.data.SMTP_USER || !result.data.SMTP_PASSWORD) {

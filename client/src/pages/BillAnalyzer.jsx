@@ -27,7 +27,10 @@ function makeDemoBill() {
   }
 }
 
-export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = false }) {
+export default function BillAnalyzer({ onBack, onSave, onAnalyzeUpload, onExplain, demoMode = false }) {
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadConsent, setUploadConsent] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [patientLabel, setPatientLabel] = useState('')
   const [currency, setCurrency] = useState('INR')
   const [items, setItems] = useState([blankItem()])
@@ -37,6 +40,7 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [explanation, setExplanation] = useState('')
+  const [aiReview, setAiReview] = useState(null)
   const [explaining, setExplaining] = useState(false)
 
   const calculatedSubtotal = useMemo(
@@ -67,6 +71,7 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
     event.preventDefault()
     setError('')
     setResult(null)
+    setAiReview(null)
     setExplanation('')
 
     const normalizedItems = items.map(item => ({
@@ -103,6 +108,31 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
       setError(saveError.message || 'Could not save this bill. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleUploadAnalysis() {
+    setError('')
+    setResult(null)
+    setExplanation('')
+    setAiReview(null)
+    if (!uploadFile) {
+      setError('Choose a bill PDF, JPG, or PNG first.')
+      return
+    }
+    if (!uploadConsent) {
+      setError('Consent is required before the bill is sent to the AI provider.')
+      return
+    }
+    setUploading(true)
+    try {
+      const response = await onAnalyzeUpload(uploadFile)
+      setResult(response.bill)
+      setAiReview(response.review)
+    } catch (uploadError) {
+      setError(uploadError.message || 'Could not analyze this bill.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -146,16 +176,60 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
 
       <main className="analyzer-main">
         <section className="analyzer-intro">
-          <div className="eyebrow"><span className="eyebrow-dot" /> BILL CHECKUP</div>
-          <h1>Make every line add up.</h1>
-          <p>Enter the amounts shown on your bill. We independently calculate the line totals and flag arithmetic differences for you to review.</p>
+          <div className="eyebrow"><span className="eyebrow-dot" /> AI BILL REVIEW</div>
+          <h1>Upload a bill. Understand the details.</h1>
+          <p>AI reads the bill and explains its listed expenses. We independently calculate totals and flag arithmetic differences—without claiming to determine fair pricing or coverage.</p>
         </section>
 
+        <section className="upload-card document-upload-card">
+          <div className="section-heading">
+            <div>
+              <h2>Analyze a bill document</h2>
+              <p>Upload a text-based PDF or a clear JPG/PNG image (maximum 8 MB).</p>
+            </div>
+            <span className="step-badge">AI REVIEW</span>
+          </div>
+          <label className="document-picker">
+            <span>{uploadFile ? uploadFile.name : 'Choose a PDF, JPG, or PNG bill'}</span>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              onChange={event => {
+                const file = event.target.files?.[0]
+                setUploadFile(file || null)
+                setUploadConsent(false)
+                setError('')
+                if (file && file.size > 8 * 1024 * 1024) {
+                  setUploadFile(null)
+                  setError('Bill files must be 8 MB or smaller.')
+                }
+              }}
+            />
+          </label>
+          {uploadFile && <p className="document-file-size">{(uploadFile.size / 1024 / 1024).toFixed(2)} MB · Uploaded file is processed in memory and not saved.</p>}
+          <label className="consent-check upload-consent">
+            <input
+              type="checkbox"
+              checked={uploadConsent}
+              onChange={event => setUploadConsent(event.target.checked)}
+            />
+            I understand the bill contents will be sent to the configured AI provider (the image for JPG/PNG, or extracted text for PDF), including personal or health details visible in it. Do not upload real patient information unless you have permission.
+          </label>
+          <div className="privacy-note">
+            <span aria-hidden="true">ⓘ</span>
+            <p><strong>What AI checks:</strong> it extracts visible charges and offers neutral explanations/questions. The app—not AI—recalculates the arithmetic. It does not compare provider prices or verify insurance coverage.</p>
+          </div>
+          <button className="analyze-button" type="button" disabled={!uploadFile || !uploadConsent || uploading} onClick={handleUploadAnalysis}>
+            {uploading ? 'Reading bill with AI…' : 'Upload and analyze bill'} <span aria-hidden="true">→</span>
+          </button>
+        </section>
+
+        <div className="manual-entry-divider"><span>OR ENTER THE ITEMS YOURSELF</span></div>
         <form className="upload-card bill-entry-form" onSubmit={handleSubmit}>
           <div className="section-heading">
             <div>
               <h2>Bill details</h2>
-              <p>Only the information you enter is used. No document is uploaded.</p>
+              <p>Use manual entry if the file is unclear or you prefer not to send it to AI.</p>
             </div>
             {demoMode && <button className="secondary-button" type="button" onClick={loadExample}>Load example</button>}
           </div>
@@ -229,7 +303,7 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
           {error && <div className="analyzer-error" role="alert">{error}</div>}
           <div className="privacy-note">
             <span aria-hidden="true">ⓘ</span>
-            <p><strong>Private by design:</strong> manual entries only. Demo data stays in this browser; signed-in reports are saved to your account.</p>
+            <p><strong>Private by design:</strong> manual entries stay local in demo mode; signed-in reports are saved to your account.</p>
           </div>
           <button className="analyze-button" type="submit" disabled={saving}>
             {saving ? 'Checking your bill…' : 'Check and save bill'} <span aria-hidden="true">→</span>
@@ -282,6 +356,29 @@ export default function BillAnalyzer({ onBack, onSave, onExplain, demoMode = fal
               )}
               {demoMode && <p className="no-difference-message">AI explanations are disabled in local demo mode. No bill data leaves this browser.</p>}
               {explanation && <div className="explanation-box"><h3>Plain-language explanation</h3><p>{explanation}</p></div>}
+              {aiReview && (
+                <div className="ai-review-panel">
+                  <h3>AI bill review</h3>
+                  <p>{aiReview.summary}</p>
+                  {!!aiReview.items?.length && (
+                    <ul className="ai-item-review">
+                      {aiReview.items.map((item, index) => (
+                        <li key={`${index}-${item.category}`}>
+                          <strong>{result.items?.[index]?.description || `Line item ${index + 1}`} · {item.category}</strong>
+                          <span>{item.observation}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {!!aiReview.uncertainties?.length && (
+                    <div><strong>Needs a closer look</strong><ul>{aiReview.uncertainties.map((item, index) => <li key={index}>{item}</li>)}</ul></div>
+                  )}
+                  {!!aiReview.questions?.length && (
+                    <div><strong>Questions you could ask</strong><ul>{aiReview.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></div>
+                  )}
+                  <small>AI can misread documents. Compare extracted details against the original bill.</small>
+                </div>
+              )}
               <div className="results-disclaimer"><strong>Important:</strong> This tool checks arithmetic, not medical necessity, fair pricing, insurance coverage, or fraud. Ask your billing office or insurer about uncertain charges.</div>
             </article>
             <button className="secondary-button new-analysis-button" type="button" onClick={resetForm}>Check another bill</button>

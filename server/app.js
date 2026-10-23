@@ -5,9 +5,11 @@ const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
 const pinoHttp = require('pino-http')
 const pino = require('pino')
+const multer = require('multer')
 const mongoose = require('mongoose')
 const authRoutes = require('./src/routes/authRoutes')
 const billRoutes = require('./src/routes/billRoutes')
+const demoRoutes = require('./src/routes/demoRoutes')
 const { loadEnv } = require('./src/config/env')
 const { issueCsrf, csrfProtection } = require('./src/middleware/security')
 
@@ -55,6 +57,7 @@ function createApp() {
   app.get('/api/auth/csrf', issueCsrf)
   app.use('/api', csrfProtection)
   app.use('/api/auth', authRoutes)
+  app.use('/api/demo', demoRoutes)
   app.use('/api/bills', billRoutes)
 
   app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'API route not found' }))
@@ -62,6 +65,13 @@ function createApp() {
   app.use((err, req, res, next) => {
     req.log?.error({ err: { name: err.name, message: err.message } }, 'Request failed')
     if (res.headersSent) return next(err)
+    if (err instanceof multer.MulterError) {
+      const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Bill files must be 8 MB or smaller'
+        : 'Upload one PDF, JPG, or PNG bill file'
+      return res.status(status).json({ success: false, message })
+    }
     if (err.type === 'entity.too.large') return res.status(413).json({ success: false, message: 'Request body is too large' })
     if (err instanceof SyntaxError && 'body' in err) return res.status(400).json({ success: false, message: 'Invalid JSON body' })
     if (err.code === 11000) return res.status(409).json({ success: false, message: 'A conflicting record already exists' })

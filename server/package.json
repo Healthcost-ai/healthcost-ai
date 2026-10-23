@@ -23,8 +23,9 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.3",
+    "multer": "^2.5.0",
     "nodemailer": "^10.2.1",
-    "openai": "^7.43.0",
+    "pdf-parse": "^1.1.1",
     "pino-http": "^11.0.0",
     "zod": "^4.6.7"
   },

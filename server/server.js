@@ -6,7 +6,11 @@ const mongoose = require('mongoose')
 
 async function main() {
   const env = loadEnv()
-  await connectDB(env.MONGODB_URI)
+  if (env.MONGODB_URI) {
+    await connectDB(env.MONGODB_URI)
+  } else {
+    console.info('MongoDB is not configured; account features are unavailable, local demo uploads remain available')
+  }
   const app = createApp()
   const server = app.listen(env.PORT, () => {
     console.info(`HealthCost AI API listening on port ${env.PORT}`)

@@ -657,6 +657,128 @@
   max-width: 900px;
 }
 
+.document-upload-card {
+  max-width: 900px;
+}
+
+.document-picker {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1.5px dashed #b9d6c8;
+  border-radius: 11px;
+  background: #fbfdfc;
+  color: #315d4b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.document-picker:hover {
+  border-color: #07865f;
+  background: #f4fbf6;
+}
+
+.document-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.document-picker:focus-within {
+  outline: 3px solid rgb(85 170 128 / 25%);
+}
+
+.document-file-size {
+  margin: 8px 0 0;
+  color: #82938a;
+  font-size: 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.upload-consent {
+  margin-top: 18px;
+}
+
+.manual-entry-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 900px;
+  margin: 25px auto;
+  color: #91a097;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.manual-entry-divider::before,
+.manual-entry-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #dfe9e3;
+  content: '';
+}
+
+.ai-review-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid #dcefe3;
+  border-radius: 10px;
+  background: #f7fbf8;
+  color: #526b60;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.ai-review-panel h3 {
+  margin: 0;
+  color: #264a3a;
+  font-size: 14px;
+}
+
+.ai-review-panel p {
+  margin: 0;
+}
+
+.ai-review-panel ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding-left: 19px;
+}
+
+.ai-item-review {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.ai-item-review li {
+  display: grid;
+  gap: 3px;
+  padding: 9px 0;
+  border-top: 1px solid #e3eee7;
+}
+
+.ai-item-review strong {
+  color: #315d4b;
+  text-transform: capitalize;
+}
+
+.ai-review-panel small {
+  color: #83938a;
+  font-size: 10px;
+}
+
 .bill-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px;
