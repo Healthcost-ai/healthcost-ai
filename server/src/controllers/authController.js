@@ -4,8 +4,8 @@ const { OAuth2Client } = require('google-auth-library')
 const User = require('../models/User')
 const Session = require('../models/Session')
 const { loadEnv } = require('../config/env')
-const { randomToken, hashToken } = require('../utils/tokens')
-const { sendVerificationEmail } = require('../services/email')
+const { randomToken, randomVerificationCode, hashToken } = require('../utils/tokens')
+const { sendVerificationEmail } = require('../services/emailService')
 const {
   REFRESH_COOKIE, setAuthCookies, clearAuthCookies, createAccessToken
 } = require('../middleware/security')
@@ -16,6 +16,17 @@ function publicUser(user) {
 
 function parseRefresh(req) {
   return req.cookies[REFRESH_COOKIE]
+}
+
+async function sendVerification(user, env) {
+  const verificationToken = randomVerificationCode()
+  user.verificationTokenHash = hashToken(verificationToken)
+  user.verificationExpiresAt = new Date(Date.now() + 30 * 60 * 1000)
+  await user.save()
+
+  const frontendUrl = env.APP_BASE_URL.replace(/\/$/, '')
+  const verificationUrl = `${frontendUrl}/?token=${encodeURIComponent(verificationToken)}`
+  await sendVerificationEmail(user.email, verificationUrl, verificationToken)
 }
 
 async function createSession(user, req, res) {
@@ -42,32 +53,57 @@ async function register(req, res, next) {
     if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
       return res.status(400).json({ success: false, message: 'Password must be 12–128 characters' })
     }
-    if (await User.exists({ email })) {
-      // Avoid revealing account existence.
+    const env = loadEnv()
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      if (!existingUser.emailVerified) await sendVerification(existingUser, env)
       return res.status(202).json({ success: true, message: 'If this address can be registered, verification instructions will be sent' })
     }
-    const env = loadEnv()
-    const verificationToken = randomToken()
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
     const user = await User.create({
       email,
       passwordHash,
-      emailVerified: false,
-      verificationTokenHash: hashToken(verificationToken),
-      verificationExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
+      emailVerified: false
     })
-    await sendVerificationEmail(email, verificationToken)
+    await sendVerification(user, env)
     return res.status(202).json({ success: true, message: 'If this address can be registered, verification instructions will be sent' })
   } catch (error) {
-    if (error.code === 11000) return res.status(202).json({ success: true, message: 'If this address can be registered, verification instructions will be sent' })
+    if (error.code === 11000) {
+      const email = String(req.body.email || '').trim().toLowerCase()
+      const user = await User.findOne({ email })
+      if (user && !user.emailVerified) {
+        try {
+          await sendVerification(user, loadEnv())
+          return res.status(202).json({ success: true, message: 'If this address can be registered, verification instructions will be sent' })
+        } catch (sendError) {
+          return next(sendError)
+        }
+      }
+      return res.status(202).json({ success: true, message: 'If this address can be registered, verification instructions will be sent' })
+    }
     next(error)
   }
+}
+
+async function resendVerification(req, res, next) {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address' })
+    }
+
+    const user = await User.findOne({ email })
+    if (user && !user.emailVerified) await sendVerification(user, loadEnv())
+    return res.status(202).json({ success: true, message: 'If this address needs verification, instructions will be sent' })
+  } catch (error) { next(error) }
 }
 
 async function verifyEmail(req, res, next) {
   try {
     const token = String(req.body.token || '')
-    if (!token) return res.status(400).json({ success: false, message: 'Verification token is required' })
+    if (!/^\d{6}$/.test(token)) {
+      return res.status(400).json({ success: false, message: 'Enter the six-digit verification code' })
+    }
     const user = await User.findOne({
       verificationTokenHash: hashToken(token),
       verificationExpiresAt: { $gt: new Date() }
@@ -184,4 +220,4 @@ async function me(req, res) {
   return res.json({ success: true, user: publicUser(req.user) })
 }
 
-module.exports = { register, verifyEmail, login, googleLogin, refresh, logout, logoutAll, me }
+module.exports = { register, resendVerification, verifyEmail, login, googleLogin, refresh, logout, logoutAll, me }

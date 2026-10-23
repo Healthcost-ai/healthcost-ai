@@ -4,6 +4,10 @@ function randomToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('base64url')
 }
 
+function randomVerificationCode() {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0')
+}
+
 function hashToken(value) {
   return crypto.createHash('sha256').update(value).digest('hex')
 }
@@ -14,4 +18,4 @@ function safeEqualText(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right)
 }
 
-module.exports = { randomToken, hashToken, safeEqualText }
+module.exports = { randomToken, randomVerificationCode, hashToken, safeEqualText }

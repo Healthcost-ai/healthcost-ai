@@ -1,15 +1,40 @@
 
-import { useState } from 'react'
-import { login, register, verifyEmail } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { login, register, resendVerification, verifyEmail } from '../lib/api'
 
 export default function AuthPage({ onAuthenticated }) {
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).has('token') ? 'verify' : 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [verificationToken, setVerificationToken] = useState('')
+  const [verificationToken, setVerificationToken] = useState(() => new URLSearchParams(window.location.search).get('token') || '')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => new URLSearchParams(window.location.search).has('token'))
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    if (!token) return
+
+    let active = true
+    verifyEmail(token)
+      .then((result) => {
+        if (!active) return
+        setMessage(result.message || 'Email verified. You can now sign in.')
+        setMode('login')
+        window.history.replaceState({}, '', window.location.pathname)
+      })
+      .catch((err) => {
+        if (!active) return
+        setError(err.message || 'Unable to verify your email. Enter the token below or request a new one.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -29,6 +54,7 @@ export default function AuthPage({ onAuthenticated }) {
         const result = await verifyEmail(verificationToken.trim())
         setMessage(result.message || 'Email verified. You can now sign in.')
         setMode('login')
+        window.history.replaceState({}, '', window.location.pathname)
       } else {
         const result = await login(email.trim(), password)
 
@@ -40,6 +66,20 @@ export default function AuthPage({ onAuthenticated }) {
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleResendVerification() {
+    setError('')
+    setMessage('')
+    setLoading(true)
+    try {
+      const result = await resendVerification(email.trim())
+      setMessage(result.message || 'If this address needs verification, instructions will be sent.')
+    } catch (err) {
+      setError(err.message || 'Unable to resend verification instructions. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -70,7 +110,7 @@ export default function AuthPage({ onAuthenticated }) {
               ? 'Sign in to manage your medical bill reports.'
               : mode === 'register'
                 ? 'Create an account to keep your reports in one place.'
-                : 'Enter the verification token from your email.'}
+                : 'Open the verification link in your email or enter the token below.'}
           </p>
         </div>
 
@@ -112,16 +152,38 @@ export default function AuthPage({ onAuthenticated }) {
 
           {mode === 'verify' && (
             <>
+              <label htmlFor="resend-email">Email address (for resend)</label>
+              <input
+                id="resend-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                maxLength={254}
+              />
               <label htmlFor="verification-token">Verification token</label>
               <input
                 id="verification-token"
                 type="text"
+                inputMode="numeric"
                 autoComplete="one-time-code"
                 value={verificationToken}
-                onChange={(event) => setVerificationToken(event.target.value)}
-                placeholder="Paste your email verification token"
+                onChange={(event) => setVerificationToken(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter your six-digit code"
+                minLength={6}
+                maxLength={6}
+                pattern="\d{6}"
                 required
               />
+              <button
+                className="text-button"
+                type="button"
+                disabled={loading || !email.trim()}
+                onClick={handleResendVerification}
+              >
+                Resend verification email
+              </button>
             </>
           )}
 

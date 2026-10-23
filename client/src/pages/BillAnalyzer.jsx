@@ -285,7 +285,7 @@ export default function BillAnalyzer({ onBack }) {
                 <p>Illustrative results for demonstration purposes only.</p>
               </div>
 
-              <span className="sample-badge">SAMPLE DATA</span>
+              {demoMode && <span className="sample-badge">SAMPLE DATA</span>}
             </div>
 
             <div className="result-summary-grid">

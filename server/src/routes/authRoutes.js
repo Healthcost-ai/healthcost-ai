@@ -6,13 +6,14 @@ const { requireAuth } = require('../middleware/security')
 const router = express.Router()
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: 50,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { success: false, message: 'Too many authentication attempts. Try again later.' }
 })
 
 router.post('/register', authLimiter, auth.register)
+router.post('/resend-verification', authLimiter, auth.resendVerification)
 router.post('/verify-email', authLimiter, auth.verifyEmail)
 router.post('/login', authLimiter, auth.login)
 router.post('/google', authLimiter, auth.googleLogin)

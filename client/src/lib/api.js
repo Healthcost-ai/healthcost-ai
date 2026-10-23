@@ -59,6 +59,13 @@ export async function register(email, password) {
   })
 }
 
+export async function resendVerification(email) {
+  return secureRequest('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
 export async function verifyEmail(token) {
   return secureRequest('/auth/verify-email', {
     method: 'POST',
