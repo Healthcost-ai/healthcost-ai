@@ -34,6 +34,7 @@ export default function TreatmentPriceFinder({ onBack }) {
   const [facility, setFacility] = useState('nabh')
   const [ward, setWard] = useState('general_ward')
   const [results, setResults] = useState(null)
+  const [resultsFilter, setResultsFilter] = useState('')
   const [selectedTreatment, setSelectedTreatment] = useState(null)
   const [cities, setCities] = useState([])
   const [citiesError, setCitiesError] = useState('')
@@ -52,6 +53,12 @@ export default function TreatmentPriceFinder({ onBack }) {
     return `${hospital.name} ${hospital.accreditation} ${hospital.tier} ${hospital.city}`
       .toLocaleLowerCase('en-IN')
       .includes(normalizedFilter)
+  }) || []
+  const visibleRates = results?.rates.filter(rate => {
+    const terms = resultsFilter.trim().toLocaleLowerCase('en-IN').split(/\s+/).filter(Boolean)
+    const searchable = `${rate.procedure} ${rate.specialty} ${rate.code} ${rate.rate}`
+      .toLocaleLowerCase('en-IN')
+    return terms.every(term => searchable.includes(term))
   }) || []
 
   useEffect(() => {
@@ -119,6 +126,7 @@ export default function TreatmentPriceFinder({ onBack }) {
       rates: [rate],
       total: 1,
     })
+    setResultsFilter('')
     setSuggestions(null)
     setSuggestionsError('')
     setError('')
@@ -129,6 +137,7 @@ export default function TreatmentPriceFinder({ onBack }) {
     setError('')
     setSuggestions(null)
     setResults(null)
+    setResultsFilter('')
     setSelectedTreatment(null)
     setHospitalResults(null)
     setHospitalError('')
@@ -175,6 +184,7 @@ export default function TreatmentPriceFinder({ onBack }) {
                 onChange={event => {
                   setQuery(event.target.value)
                   setResults(null)
+                  setResultsFilter('')
                   setSelectedTreatment(null)
                   setHospitalResults(null)
                   setHospitalError('')
@@ -272,19 +282,29 @@ export default function TreatmentPriceFinder({ onBack }) {
         {results && (
           <section className="treatment-results" aria-live="polite">
             <div className="treatment-results-heading">
-              <div><span>SEARCH RESULTS</span><h2>{results.total} matching {results.total === 1 ? 'rate' : 'rates'}</h2></div>
+              <div><span>SEARCH RESULTS</span><h2>{visibleRates.length} matching {visibleRates.length === 1 ? 'rate' : 'rates'}</h2></div>
               <a href={results.sourceUrl} target="_blank" rel="noreferrer">View on official CGHS site ↗</a>
             </div>
             {results.total === 0 ? (
               <p className="treatment-no-results">No matching procedures found. Try a shorter term or search by code.</p>
             ) : (
               <>
+                <label className="treatment-results-filter">
+                  Filter these results
+                  <input
+                    type="search"
+                    value={resultsFilter}
+                    onChange={event => setResultsFilter(event.target.value)}
+                    placeholder="Procedure, specialty, CGHS code, or rate"
+                    aria-label="Filter treatment results by procedure, specialty, CGHS code, or rate"
+                  />
+                </label>
                 {results.total > results.rates.length && <p className="treatment-result-count">Showing the first {results.rates.length} results. Refine your search to narrow the list.</p>}
-                <div className="treatment-results-table-wrap">
+                {visibleRates.length > 0 ? <div className="treatment-results-table-wrap">
                   <table className="treatment-results-table">
                     <thead><tr><th>Procedure</th><th>Specialty</th><th>CGHS code</th><th>Published rate</th><th>Hospitals</th></tr></thead>
                     <tbody>
-                      {results.rates.map((rate, index) => (
+                      {visibleRates.map((rate, index) => (
                         <tr key={`${rate.code}-${index}`}>
                           <td>{rate.procedure}</td>
                           <td>{rate.specialty || '—'}</td>
@@ -300,7 +320,7 @@ export default function TreatmentPriceFinder({ onBack }) {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </div> : <p className="treatment-no-results">No loaded results match this filter. Try another term or clear the filter.</p>}
                 <p className="treatment-source-note">
                   Source: {results.sourceName}. Rate list fetched {new Date(results.refreshedAt).toLocaleString()}.
                 </p>
