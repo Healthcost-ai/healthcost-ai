@@ -37,6 +37,15 @@ export async function searchTreatmentPrices({ query, tier, facility, ward }, opt
   return request(`/treatment-prices?${params}`, options)
 }
 
+export async function getCghsCities(options = {}) {
+  return request('/treatment-prices/hospitals/cities', options)
+}
+
+export async function getCghsHospitals(cityId, options = {}) {
+  const params = new URLSearchParams({ cityId })
+  return request(`/treatment-prices/hospitals?${params}`, options)
+}
+
 export async function getCsrfToken() {
   const data = await request('/auth/csrf')
   csrfToken = data.csrfToken

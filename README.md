@@ -5,3 +5,5 @@ HealthCost AI helps people check the arithmetic on medical bills, keep a private
 ## Treatment Price Finder
 
 The finder searches the Central Government Health Scheme (CGHS) rate list published by India's Ministry of Health and Family Welfare. Select the CGHS tier, facility classification, and ward type, then search by procedure name or CGHS code. Rates are official CGHS rates and are not general hospital price estimates, a quote, or a guarantee of patient eligibility or coverage. The finder fetches live data from the [official CGHS rate list](https://cghs.mohfw.gov.in/AHIMSG5/hissso/cghsRateListLogin); it requires an internet connection.
+
+For a selected procedure, the finder can also show the [official CGHS-empanelled hospital directory](https://cghs.mohfw.gov.in/AHIMSG5/hissso/empanelledLogin) by selected city, including the hospital name, CGHS tier, and accreditation label when supplied by CGHS. This directory is separate from the procedure rates and does not establish that a hospital offers a particular procedure. Confirm current empanelment, services, availability, and rate applicability directly with CGHS and the hospital.

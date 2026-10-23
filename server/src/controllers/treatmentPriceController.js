@@ -1,5 +1,5 @@
 const { z } = require('zod')
-const { getCghsRates } = require('../services/cghsRateService')
+const { getCghsCities, getCghsHospitals, getCghsRates } = require('../services/cghsRateService')
 
 const searchSchema = z.object({
   query: z.string().trim().min(2).max(80),
@@ -29,4 +29,38 @@ async function searchTreatmentPrices(req, res, next) {
   }
 }
 
-module.exports = { searchTreatmentPrices }
+async function listCghsCities(req, res) {
+  try {
+    const cities = await getCghsCities()
+    return res.json({ success: true, cities })
+  } catch (error) {
+    req.log?.error({ message: error.message }, 'CGHS city directory lookup failed')
+    return res.status(502).json({
+      success: false,
+      message: 'The official CGHS city list is temporarily unavailable. Please try again later.',
+    })
+  }
+}
+
+async function listCghsHospitals(req, res) {
+  const parsed = z.string().regex(/^\d{1,8}$/).safeParse(req.query.cityId)
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, message: 'Choose a valid CGHS city.' })
+  }
+
+  try {
+    const result = await getCghsHospitals(parsed.data)
+    return res.json({ success: true, ...result })
+  } catch (error) {
+    if (error.message === 'Invalid CGHS city') {
+      return res.status(400).json({ success: false, message: 'Choose a valid CGHS city.' })
+    }
+    req.log?.error({ message: error.message }, 'CGHS hospital directory lookup failed')
+    return res.status(502).json({
+      success: false,
+      message: 'The official CGHS hospital list is temporarily unavailable. Please try again later.',
+    })
+  }
+}
+
+module.exports = { listCghsCities, listCghsHospitals, searchTreatmentPrices }

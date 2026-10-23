@@ -91,6 +91,7 @@
 
 .treatment-search-card,
 .treatment-results,
+.treatment-hospital-section,
 .treatment-rate-disclaimer {
   border: 1px solid #e7ede9;
   border-radius: 13px;
@@ -323,15 +324,22 @@
   white-space: nowrap;
 }
 
+.treatment-results-table td:nth-child(4),
+.treatment-results-table th:nth-child(4),
 .treatment-results-table td:last-child,
 .treatment-results-table th:last-child {
   text-align: right;
   white-space: nowrap;
 }
 
-.treatment-results-table td:last-child {
+.treatment-results-table td:nth-child(4) {
   color: #176b4d;
   font-weight: 750;
+}
+
+.treatment-results-table td:last-child {
+  color: inherit;
+  font-weight: 500;
 }
 
 .treatment-results-table tr:last-child td {
@@ -356,6 +364,177 @@
 
 .treatment-no-results {
   margin: 0;
+}
+
+.treatment-hospital-section {
+  margin-top: 20px;
+  padding: 22px;
+}
+
+.treatment-hospital-section .treatment-results-heading > a {
+  text-decoration: none;
+}
+
+.treatment-selected-rate {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 13px;
+  border: 1px solid #e7ede9;
+  border-radius: 9px;
+  background: #f8fbf9;
+}
+
+.treatment-selected-rate > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.treatment-selected-rate span,
+.treatment-hospital-toolbar label {
+  color: #718078;
+  font-size: 9px;
+}
+
+.treatment-selected-rate strong {
+  overflow-wrap: anywhere;
+  color: #284b3b;
+  font-size: 11px;
+}
+
+.treatment-city-select {
+  display: flex;
+  max-width: 340px;
+  flex-direction: column;
+  gap: 7px;
+  color: #526359;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.treatment-city-select select,
+.treatment-hospital-toolbar input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid #dce6df;
+  border-radius: 8px;
+  background: #fff;
+  color: #172a23;
+  font: inherit;
+  font-size: 11px;
+}
+
+.treatment-hospital-status {
+  color: #58746a;
+  font-size: 11px;
+}
+
+.treatment-hospital-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.treatment-hospital-toolbar p {
+  margin: 0;
+  color: #58746a;
+  font-size: 10px;
+}
+
+.treatment-hospital-toolbar label {
+  display: flex;
+  width: min(270px, 100%);
+  flex-direction: column;
+  gap: 6px;
+}
+
+.treatment-hospital-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.treatment-hospital-card {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 11px;
+  border: 1px solid #edf1ee;
+  border-radius: 9px;
+}
+
+.treatment-hospital-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e8f7ef;
+  color: #07865b;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.treatment-hospital-card > div:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treatment-hospital-card strong {
+  overflow-wrap: anywhere;
+  color: #284b3b;
+  font-size: 10px;
+}
+
+.treatment-hospital-card > div:nth-child(2) span {
+  color: #718078;
+  font-size: 9px;
+}
+
+.treatment-hospital-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 5px;
+}
+
+.treatment-hospital-tags span {
+  padding: 4px 7px;
+  border-radius: 12px;
+  background: #f2f6f3;
+  color: #58746a;
+  font-size: 8px;
+}
+
+.treatment-hospital-link {
+  padding: 5px 8px;
+  border: 1px solid #d7ebe1;
+  border-radius: 6px;
+  background: #f3faf6;
+  color: #07865b;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.treatment-hospital-link:hover {
+  background: #e5f4eb;
+}
+
+.treatment-hospital-disclaimer {
+  margin: 13px 0 0;
+  color: #718078;
+  font-size: 9px;
+  line-height: 1.6;
 }
 
 .treatment-rate-disclaimer {
@@ -399,7 +578,8 @@
   }
 
   .treatment-search-card,
-  .treatment-results {
+  .treatment-results,
+  .treatment-hospital-section {
     padding: 17px;
   }
 
@@ -414,5 +594,31 @@
 
   .treatment-results-table {
     min-width: 540px;
+  }
+
+  .treatment-selected-rate {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .treatment-selected-rate > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .treatment-hospital-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .treatment-hospital-toolbar label {
+    width: 100%;
+  }
+
+  .treatment-hospital-card {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .treatment-hospital-tags {
+    grid-column: 2;
+    justify-content: start;
   }
 }

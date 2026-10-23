@@ -3,6 +3,10 @@ const CGHS_RATE_PAGE = 'https://cghs.mohfw.gov.in/AHIMSG5/hissso/cghsRateListLog
 const CACHE_TTL_MS = 15 * 60 * 1000
 
 const rateCache = new Map()
+let cityCache
+const hospitalCache = new Map()
+const CGHS_HOSPITAL_API = 'https://cghs.mohfw.gov.in/AHIMSG5/hislogin'
+const CGHS_HOSPITAL_PAGE = 'https://cghs.mohfw.gov.in/AHIMSG5/hissso/empanelledLogin'
 
 function getSourceUrl({ tier, facility, ward }) {
   const url = new URL(CGHS_RATE_PAGE)
@@ -68,4 +72,65 @@ async function getCghsRates({ tier, facility, ward, query }) {
   }
 }
 
-module.exports = { getCghsRates }
+async function fetchOfficialJson(url) {
+  const response = await fetch(url, { signal: AbortSignal.timeout(15000) })
+  if (!response.ok) throw new Error(`CGHS directory returned status ${response.status}`)
+  return response.json()
+}
+
+async function getCghsCities() {
+  if (cityCache && cityCache.expiresAt > Date.now()) return cityCache.items
+
+  const data = await fetchOfficialJson(`${CGHS_HOSPITAL_API}/getCityNamesLgnFtr?`)
+  if (!Array.isArray(data.cityNamesDtl)) throw new Error('CGHS city directory returned invalid data')
+  cityCache = {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    items: data.cityNamesDtl.flatMap(city => {
+      const id = String(city.cityId || '')
+      const name = typeof city.cityName === 'string' ? city.cityName.trim() : ''
+      return /^\d{1,8}$/.test(id) && name ? [{ id, name }] : []
+    }),
+  }
+  return cityCache.items
+}
+
+async function getCghsHospitals(cityId) {
+  const cities = await getCghsCities()
+  const city = cities.find(item => item.id === cityId)
+  if (!city) throw new Error('Invalid CGHS city')
+
+  let result = hospitalCache.get(cityId)
+  if (!result || result.expiresAt <= Date.now()) {
+    const url = new URL(`${CGHS_HOSPITAL_API}/getHospitalsByCityLgnFtr`)
+    url.searchParams.set('cityId', cityId)
+    const data = await fetchOfficialJson(url)
+    if (!Array.isArray(data.hospitalNamesDtl)) throw new Error('CGHS hospital directory returned invalid data')
+    result = {
+      expiresAt: Date.now() + CACHE_TTL_MS,
+      items: data.hospitalNamesDtl.flatMap(hospital => {
+        const name = typeof hospital.hospName === 'string' ? hospital.hospName.trim() : ''
+        if (!name) return []
+        return [{
+          name,
+          city: typeof hospital.cityName === 'string' ? hospital.cityName : city.name,
+          tier: typeof hospital.tierType === 'string' ? hospital.tierType : '',
+          accreditation: typeof hospital.hospAcc === 'string' ? hospital.hospAcc : '',
+        }]
+      }),
+      refreshedAt: new Date().toISOString(),
+    }
+    hospitalCache.set(cityId, result)
+  }
+
+  const sourceUrl = new URL(CGHS_HOSPITAL_PAGE)
+  sourceUrl.searchParams.set('cityId', cityId)
+  return {
+    city,
+    hospitals: result.items,
+    sourceUrl: sourceUrl.toString(),
+    sourceName: 'Central Government Health Scheme (CGHS), Ministry of Health and Family Welfare, Government of India',
+    refreshedAt: result.refreshedAt,
+  }
+}
+
+module.exports = { getCghsCities, getCghsHospitals, getCghsRates }

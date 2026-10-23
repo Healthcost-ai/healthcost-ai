@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './TreatmentPriceFinder.css'
-import { searchTreatmentPrices } from '../lib/api'
+import { getCghsCities, getCghsHospitals, searchTreatmentPrices } from '../lib/api'
 
 const tiers = [
   { value: 'tier_i', label: 'Tier I' },
@@ -34,11 +34,51 @@ export default function TreatmentPriceFinder({ onBack }) {
   const [facility, setFacility] = useState('nabh')
   const [ward, setWard] = useState('general_ward')
   const [results, setResults] = useState(null)
+  const [selectedTreatment, setSelectedTreatment] = useState(null)
+  const [cities, setCities] = useState([])
+  const [citiesError, setCitiesError] = useState('')
+  const [cityId, setCityId] = useState('')
+  const [hospitalResults, setHospitalResults] = useState(null)
+  const [hospitalError, setHospitalError] = useState('')
+  const [hospitalFilter, setHospitalFilter] = useState('')
   const [suggestions, setSuggestions] = useState(null)
   const [suggestionsError, setSuggestionsError] = useState('')
   const [activeSuggestion, setActiveSuggestion] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const hospitalsLoading = Boolean(cityId && selectedTreatment && !hospitalResults && !hospitalError)
+  const visibleHospitals = hospitalResults?.hospitals.filter(hospital => {
+    const normalizedFilter = hospitalFilter.trim().toLocaleLowerCase('en-IN')
+    return `${hospital.name} ${hospital.accreditation} ${hospital.tier} ${hospital.city}`
+      .toLocaleLowerCase('en-IN')
+      .includes(normalizedFilter)
+  }) || []
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getCghsCities({ signal: controller.signal })
+      .then(data => setCities(data.cities))
+      .catch(citiesError => {
+        if (citiesError.name !== 'AbortError') {
+          setCitiesError(citiesError.message || 'Could not load official CGHS cities.')
+        }
+      })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!cityId || !selectedTreatment) return undefined
+    const controller = new AbortController()
+    getCghsHospitals(cityId, { signal: controller.signal })
+      .then(setHospitalResults)
+      .catch(hospitalLoadError => {
+        if (hospitalLoadError.name !== 'AbortError') {
+          setHospitalResults(null)
+          setHospitalError(hospitalLoadError.message || 'Could not load official CGHS hospitals.')
+        }
+      })
+    return () => controller.abort()
+  }, [cityId, selectedTreatment])
 
   useEffect(() => {
     const trimmedQuery = query.trim()
@@ -70,6 +110,10 @@ export default function TreatmentPriceFinder({ onBack }) {
 
   function chooseSuggestion(rate) {
     if (!suggestions) return
+    setSelectedTreatment(rate)
+    setHospitalResults(null)
+    setHospitalError('')
+    setHospitalFilter('')
     setResults({
       ...suggestions,
       rates: [rate],
@@ -85,6 +129,9 @@ export default function TreatmentPriceFinder({ onBack }) {
     setError('')
     setSuggestions(null)
     setResults(null)
+    setSelectedTreatment(null)
+    setHospitalResults(null)
+    setHospitalError('')
     if (query.trim().length < 2) {
       setError('Enter at least two characters to search treatments.')
       return
@@ -128,6 +175,9 @@ export default function TreatmentPriceFinder({ onBack }) {
                 onChange={event => {
                   setQuery(event.target.value)
                   setResults(null)
+                  setSelectedTreatment(null)
+                  setHospitalResults(null)
+                  setHospitalError('')
                   setSuggestions(null)
                   setSuggestionsError('')
                   setError('')
@@ -232,7 +282,7 @@ export default function TreatmentPriceFinder({ onBack }) {
                 {results.total > results.rates.length && <p className="treatment-result-count">Showing the first {results.rates.length} results. Refine your search to narrow the list.</p>}
                 <div className="treatment-results-table-wrap">
                   <table className="treatment-results-table">
-                    <thead><tr><th>Procedure</th><th>Specialty</th><th>CGHS code</th><th>Published rate</th></tr></thead>
+                    <thead><tr><th>Procedure</th><th>Specialty</th><th>CGHS code</th><th>Published rate</th><th>Hospitals</th></tr></thead>
                     <tbody>
                       {results.rates.map((rate, index) => (
                         <tr key={`${rate.code}-${index}`}>
@@ -240,6 +290,12 @@ export default function TreatmentPriceFinder({ onBack }) {
                           <td>{rate.specialty || '—'}</td>
                           <td>{rate.code || '—'}</td>
                           <td>{formatRupees(rate.rate)}</td>
+                          <td><button className="treatment-hospital-link" type="button" onClick={() => {
+                            setSelectedTreatment(rate)
+                            setHospitalResults(null)
+                            setHospitalError('')
+                            setHospitalFilter('')
+                          }}>Find hospitals</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -251,6 +307,62 @@ export default function TreatmentPriceFinder({ onBack }) {
               </>
             )}
           </section>
+        )}
+
+        {selectedTreatment && (
+        <section className="treatment-hospital-section" aria-live="polite">
+          <div className="treatment-results-heading">
+            <div><span>CGHS-EMPANELLED DIRECTORY</span><h2>Hospitals for your reference</h2></div>
+            {hospitalResults && <a href={hospitalResults.sourceUrl} target="_blank" rel="noreferrer">Official CGHS directory ↗</a>}
+          </div>
+          <div className="treatment-selected-rate">
+            <div><span>Selected procedure</span><strong>{selectedTreatment.procedure}</strong></div>
+            <div><span>CGHS code</span><strong>{selectedTreatment.code || 'Not listed'}</strong></div>
+            <div><span>Published rate</span><strong>{formatRupees(selectedTreatment.rate)}</strong></div>
+          </div>
+          <label className="treatment-city-select">
+            Select CGHS city
+            <select value={cityId} onChange={event => {
+              setCityId(event.target.value)
+              setHospitalResults(null)
+              setHospitalError('')
+              setHospitalFilter('')
+            }}>
+              <option value="">Choose a city</option>
+              {cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}
+            </select>
+          </label>
+          {citiesError && <p className="treatment-finder-error" role="alert">{citiesError}</p>}
+          {hospitalError && <p className="treatment-finder-error" role="alert">{hospitalError}</p>}
+          {hospitalsLoading && <p className="treatment-hospital-status" role="status">Loading official hospital directory…</p>}
+          {hospitalResults && !hospitalsLoading && (
+            <>
+              <div className="treatment-hospital-toolbar">
+                <p>{hospitalResults.hospitals.length} listed facilities in {hospitalResults.city.name}</p>
+                <label>
+                  Filter hospitals
+                  <input value={hospitalFilter} onChange={event => setHospitalFilter(event.target.value)} placeholder="Hospital name or accreditation" />
+                </label>
+              </div>
+              {visibleHospitals.length ? (
+                <div className="treatment-hospital-list">
+                  {visibleHospitals.map((hospital, index) => (
+                    <article className="treatment-hospital-card" key={`${hospital.name}-${index}`}>
+                      <div className="treatment-hospital-icon" aria-hidden="true">+</div>
+                      <div><strong>{hospital.name}</strong><span>{hospital.city}</span></div>
+                      <div className="treatment-hospital-tags">
+                        {hospital.tier && <span>{hospital.tier}</span>}
+                        {hospital.accreditation && <span>{hospital.accreditation}</span>}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : <p className="treatment-no-results">No listed hospitals match that filter.</p>}
+              <p className="treatment-source-note">Source: {hospitalResults.sourceName}. Directory fetched {new Date(hospitalResults.refreshedAt).toLocaleString()}.</p>
+            </>
+          )}
+          <p className="treatment-hospital-disclaimer">The CGHS directory lists facilities for the selected city; it does not confirm that a particular facility currently performs the selected procedure or has availability. Contact the hospital and CGHS to verify service, empanelment, and rate applicability.</p>
+        </section>
         )}
 
         <aside className="treatment-rate-disclaimer">
